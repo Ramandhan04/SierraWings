@@ -37,14 +37,17 @@ login_manager.login_message = 'Please log in to access this page.'
 # Import models and views
 from models import User, Drone, Mission, TelemetryLog
 import auth
-from views import patient, clinic, admin, api
+from views.patient import bp as patient_bp
+from views.clinic import bp as clinic_bp
+from views.admin import bp as admin_bp
+from views.api import bp as api_bp
 
 # Register blueprints
 app.register_blueprint(auth.bp)
-app.register_blueprint(patient.bp, url_prefix='/patient')
-app.register_blueprint(clinic.bp, url_prefix='/clinic')
-app.register_blueprint(admin.bp, url_prefix='/admin')
-app.register_blueprint(api.bp, url_prefix='/api')
+app.register_blueprint(patient_bp, url_prefix='/patient')
+app.register_blueprint(clinic_bp, url_prefix='/clinic')
+app.register_blueprint(admin_bp, url_prefix='/admin')
+app.register_blueprint(api_bp, url_prefix='/api')
 
 @login_manager.user_loader
 def load_user(user_id):
