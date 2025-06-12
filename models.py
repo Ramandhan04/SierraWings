@@ -24,6 +24,44 @@ class User(UserMixin, db.Model):
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
 
+class ClinicProfile(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    clinic_name = db.Column(db.String(100), nullable=False)
+    license_number = db.Column(db.String(50), unique=True, nullable=False)
+    specialties = db.Column(db.Text)  # JSON string of specialties
+    description = db.Column(db.Text)
+    
+    # Location details
+    address = db.Column(db.Text, nullable=False)
+    city = db.Column(db.String(50), nullable=False)
+    state = db.Column(db.String(50), nullable=False)
+    zip_code = db.Column(db.String(10), nullable=False)
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+    
+    # Service details
+    service_radius = db.Column(db.Integer, default=50)  # km
+    operating_hours = db.Column(db.Text)  # JSON string
+    emergency_contact = db.Column(db.String(20))
+    website = db.Column(db.String(200))
+    
+    # Status
+    is_verified = db.Column(db.Boolean, default=False)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('clinic_profile', uselist=False))
+    
+    def __repr__(self):
+        return f'<ClinicProfile {self.clinic_name}>'
+    
+    @property
+    def full_address(self):
+        return f"{self.address}, {self.city}, {self.state} {self.zip_code}"
+
 class Drone(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)

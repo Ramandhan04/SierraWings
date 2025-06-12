@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime
-from models import Mission, Drone, TelemetryLog
+import json
+from models import Mission, Drone, TelemetryLog, User, ClinicProfile
 from app import db
 
 bp = Blueprint('patient', __name__)
