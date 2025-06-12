@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block title %}Find Medical Facilities - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-hospital me-2"></i>Find Medical Facilities
+                    </h2>
+                    <p class="text-muted mb-0">Locate verified clinics and hospitals in Sierra Leone</p>
+                </div>
+                <a href="{{ url_for('patient.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-search me-2"></i>Search Filters</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="searchQuery" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="searchQuery" 
+                                   placeholder="Clinic name or specialty..." onkeyup="filterClinics()">
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="cityFilter" class="form-label">City</label>
+                            <select class="form-select" id="cityFilter" onchange="updateLocationFilter()">
+                                <option value="">All Cities</option>
+                                <option value="Freetown">Freetown</option>
+                                <option value="Bo">Bo</option>
+                                <option value="Kenema">Kenema</option>
+                                <option value="Makeni">Makeni</option>
+                                <option value="Koidu">Koidu</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="regionFilter" class="form-label">Region/Ward</label>
+                            <select class="form-select" id="regionFilter" onchange="filterClinics()">
+                                <option value="">All Regions/Wards</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="specialtyFilter" class="form-label">Specialty</label>
+                            <select class="form-select" id="specialtyFilter" onchange="filterClinics()">
+                                <option value="">All Specialties</option>
+                                <option value="Emergency Medicine">Emergency Medicine</option>
+                                <option value="Internal Medicine">Internal Medicine</option>
+                                <option value="Pediatrics">Pediatrics</option>
+                                <option value="Surgery">Surgery</option>
+                                <option value="Obstetrics">Obstetrics</option>
+                                <option value="Cardiology">Cardiology</option>
+                                <option value="Orthopedics">Orthopedics</option>
+                                <option value="Critical Care">Critical Care</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="verifiedOnly" checked onchange="filterClinics()">
+                                <label class="form-check-label" for="verifiedOnly">
+                                    <i class="fas fa-certificate text-success me-1"></i>Verified facilities only
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                                <i class="fas fa-times me-2"></i>Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <p class="text-muted mb-0">
+                    <span id="resultsCount">{{ clinics|length }}</span> facilities found
+                </p>
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="viewMode" id="gridView" autocomplete="off" checked>
+                    <label class="btn btn-outline-secondary btn-sm" for="gridView">
+                        <i class="fas fa-th"></i>
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="viewMode" id="listView" autocomplete="off">
+                    <label class="btn btn-outline-secondary btn-sm" for="listView">
+                        <i class="fas fa-list"></i>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clinic Cards -->
+    <div class="row" id="clinicResults">
+        {% for clinic in clinics %}
+        <div class="col-lg-6 mb-4 clinic-card" 
+             data-city="{{ clinic.city }}" 
+             data-region="{{ clinic.region }}" 
+             data-specialties="{{ clinic.specialties }}"
+             data-verified="{{ clinic.is_verified|lower }}">
+            <div class="card border-0 shadow-sm h-100">
+                {% if clinic.is_verified %}
+                <div class="position-absolute top-0 end-0 m-2">
+                    <span class="badge bg-success">
+                        <i class="fas fa-certificate me-1"></i>Verified
+                    </span>
+                </div>
+                {% endif %}
+                
+                <div class="card-body">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="clinic-avatar bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" 
+                             style="width: 60px; height: 60px; font-size: 24px;">
+                            <i class="fas fa-hospital"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="card-title mb-1">{{ clinic.clinic_name }}</h5>
+                            <p class="text-muted small mb-2">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                {{ clinic.region }}, {{ clinic.city }}
+                            </p>
+                            <div class="rating mb-2">
+                                {% for i in range(5) %}
+                                <i class="fas fa-star text-warning"></i>
+                                {% endfor %}
+                                <span class="text-muted small ms-1">(4.8)</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if clinic.description %}
+                    <p class="card-text text-muted small mb-3">{{ clinic.description[:100] }}...</p>
+                    {% endif %}
+                    
+                    <!-- Specialties -->
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-2">Specialties:</h6>
+                        <div class="specialty-badges">
+                            {% set specialties = clinic.specialties|from_json if clinic.specialties else [] %}
+                            {% for specialty in specialties[:3] %}
+                            <span class="badge bg-light text-dark me-1 mb-1">{{ specialty }}</span>
+                            {% endfor %}
+                            {% if specialties|length > 3 %}
+                            <span class="badge bg-secondary">+{{ specialties|length - 3 }} more</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Contact Info -->
+                    <div class="contact-info mb-3">
+                        {% if clinic.emergency_contact %}
+                        <p class="small mb-1">
+                            <i class="fas fa-phone text-success me-2"></i>{{ clinic.emergency_contact }}
+                        </p>
+                        {% endif %}
+                        {% if clinic.website %}
+                        <p class="small mb-1">
+                            <i class="fas fa-globe text-info me-2"></i>
+                            <a href="{{ clinic.website }}" target="_blank" class="text-decoration-none">Visit Website</a>
+                        </p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Service Info -->
+                    <div class="service-info">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="service-stat">
+                                    <h6 class="text-primary mb-0">{{ clinic.service_radius }}km</h6>
+                                    <small class="text-muted">Service Radius</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="service-stat">
+                                    <h6 class="text-success mb-0">24/7</h6>
+                                    <small class="text-muted">Emergency</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="service-stat">
+                                    <h6 class="text-info mb-0">&lt;30min</h6>
+                                    <small class="text-muted">Avg Delivery</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer bg-light border-0">
+                    <div class="d-grid">
+                        <a href="{{ url_for('patient.request_delivery') }}?clinic_id={{ clinic.id }}" 
+                           class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-2"></i>Request Delivery
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- No Results -->
+    <div class="row" id="noResults" style="display: none;">
+        <div class="col-12 text-center py-5">
+            <div class="text-muted">
+                <i class="fas fa-search fa-3x mb-3"></i>
+                <h4>No facilities found</h4>
+                <p>Try adjusting your search criteria or clearing filters</p>
+                <button class="btn btn-outline-primary" onclick="clearFilters()">
+                    <i class="fas fa-refresh me-2"></i>Reset Search
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.clinic-card {
+    transition: transform 0.2s ease;
+}
+
+.clinic-card:hover {
+    transform: translateY(-2px);
+}
+
+.clinic-avatar {
+    flex-shrink: 0;
+}
+
+.specialty-badges .badge {
+    font-size: 0.75rem;
+}
+
+.service-stat h6 {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.rating .fa-star {
+    font-size: 0.9rem;
+}
+
+.contact-info .small {
+    margin-bottom: 0.25rem;
+}
+
+.view-list .clinic-card {
+    margin-bottom: 1rem;
+}
+
+.view-list .card {
+    flex-direction: row;
+}
+
+.view-list .card-body {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.view-list .clinic-avatar {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+}
+</style>
+
+<script>
+// Regional mapping for Sierra Leone (same as registration)
+const regionMapping = {
+    'Freetown': [
+        'Western Urban - Central',
+        'Western Urban - East',
+        'Western Urban - West',
+        'Western Rural'
+    ],
+    'Bo': [
+        'North Ward',
+        'East Ward', 
+        'West Ward',
+        'Central Ward'
+    ],
+    'Kenema': [
+        'City Center',
+        'Nongowa Ward',
+        'Small Bo Ward'
+    ],
+    'Makeni': [
+        'Makeni City',
+        'Rogbere Ward',
+        'Masabong Ward'
+    ],
+    'Koidu': [
+        'Koidu Town',
+        'Sefadu Ward',
+        'Nimikoro Ward'
+    ]
+};
+
+function updateLocationFilter() {
+    const citySelect = document.getElementById('cityFilter');
+    const regionSelect = document.getElementById('regionFilter');
+    const selectedCity = citySelect.value;
+    
+    // Clear existing options
+    regionSelect.innerHTML = '<option value="">All Regions/Wards</option>';
+    
+    if (selectedCity && regionMapping[selectedCity]) {
+        regionMapping[selectedCity].forEach(region => {
+            const option = document.createElement('option');
+            option.value = region;
+            option.textContent = region;
+            regionSelect.appendChild(option);
+        });
+    }
+    
+    filterClinics();
+}
+
+function filterClinics() {
+    const searchQuery = document.getElementById('searchQuery').value.toLowerCase();
+    const cityFilter = document.getElementById('cityFilter').value;
+    const regionFilter = document.getElementById('regionFilter').value;
+    const specialtyFilter = document.getElementById('specialtyFilter').value;
+    const verifiedOnly = document.getElementById('verifiedOnly').checked;
+    
+    const clinicCards = document.querySelectorAll('.clinic-card');
+    let visibleCount = 0;
+    
+    clinicCards.forEach(card => {
+        const clinicName = card.querySelector('.card-title').textContent.toLowerCase();
+        const city = card.dataset.city;
+        const region = card.dataset.region;
+        const specialties = card.dataset.specialties.toLowerCase();
+        const isVerified = card.dataset.verified === 'true';
+        
+        let show = true;
+        
+        // Text search
+        if (searchQuery && !clinicName.includes(searchQuery) && !specialties.includes(searchQuery)) {
+            show = false;
+        }
+        
+        // City filter
+        if (cityFilter && city !== cityFilter) {
+            show = false;
+        }
+        
+        // Region filter
+        if (regionFilter && region !== regionFilter) {
+            show = false;
+        }
+        
+        // Specialty filter
+        if (specialtyFilter && !specialties.includes(specialtyFilter.toLowerCase())) {
+            show = false;
+        }
+        
+        // Verified filter
+        if (verifiedOnly && !isVerified) {
+            show = false;
+        }
+        
+        if (show) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // Update results count
+    document.getElementById('resultsCount').textContent = visibleCount;
+    
+    // Show/hide no results message
+    if (visibleCount === 0) {
+        document.getElementById('noResults').style.display = 'block';
+    } else {
+        document.getElementById('noResults').style.display = 'none';
+    }
+}
+
+function clearFilters() {
+    document.getElementById('searchQuery').value = '';
+    document.getElementById('cityFilter').value = '';
+    document.getElementById('regionFilter').innerHTML = '<option value="">All Regions/Wards</option>';
+    document.getElementById('specialtyFilter').value = '';
+    document.getElementById('verifiedOnly').checked = true;
+    
+    filterClinics();
+}
+
+// View mode toggle
+document.getElementById('gridView').addEventListener('change', function() {
+    document.getElementById('clinicResults').className = 'row';
+});
+
+document.getElementById('listView').addEventListener('change', function() {
+    document.getElementById('clinicResults').className = 'row view-list';
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    // Focus search input
+    document.getElementById('searchQuery').focus();
+});
+</script>
+{% endblock %}

@@ -246,6 +246,7 @@ def register_clinic():
                 description=description,
                 address=address,
                 city=city,
+                region=request.form.get('region'),
                 state=state,
                 zip_code=zip_code,
                 service_radius=service_radius,

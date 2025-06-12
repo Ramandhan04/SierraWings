@@ -302,7 +302,67 @@ def logout():
 def settings():
     return render_template('profile.html', user=current_user)
 
-@bp.route('/forgot-password')
+@bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
-    flash('Password reset functionality will be implemented soon. Please contact support.', 'info')
-    return redirect(url_for('auth.login'))
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Generate secure reset token
+            import secrets
+            import string
+            reset_token = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(64))
+            user.reset_token = reset_token
+            user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+            db.session.commit()
+            
+            # Send professional reset email
+            from email_service import send_password_reset_email
+            send_password_reset_email(user.email, user.full_name, reset_token)
+            
+        # Always show success message for security
+        flash('Password reset instructions have been sent to your email address if it exists in our system.', 'success')
+        return redirect(url_for('auth.login'))
+    
+    return render_template('forgot_password.html')
+
+@bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    user = User.query.filter_by(reset_token=token).first()
+    
+    if not user or not user.reset_token_expires or user.reset_token_expires < datetime.utcnow():
+        flash('Invalid or expired reset token. Please request a new password reset.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not password or len(password) < 8:
+            flash('Password must be at least 8 characters long.', 'error')
+            return render_template('reset_password.html', token=token)
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('reset_password.html', token=token)
+        
+        # Validate password strength
+        import re
+        if not (re.search(r'[A-Z]', password) and 
+                re.search(r'[a-z]', password) and 
+                re.search(r'\d', password) and 
+                re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
+            flash('Password must contain uppercase, lowercase, number, and special character.', 'error')
+            return render_template('reset_password.html', token=token)
+        
+        # Update password and clear reset token
+        user.password_hash = generate_password_hash(password)
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.session.commit()
+        
+        flash('Your password has been successfully updated. You can now log in with your new password.', 'success')
+        return redirect(url_for('auth.login'))
+    
+    return render_template('reset_password.html', token=token)
