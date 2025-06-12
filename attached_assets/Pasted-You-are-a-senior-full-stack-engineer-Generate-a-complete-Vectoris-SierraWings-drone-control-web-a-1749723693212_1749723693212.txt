@@ -1,0 +1,44 @@
+You are a senior full-stack engineer. Generate a complete Vectoris (SierraWings) drone control web application in a new Replit project, with all files laid out. Use Python/Flask for the backend, SQLite (via SQLAlchemy) for persistence, and a simple Vanilla JS + Bootstrap frontend. The app must support three user roles—**Patient/Customer**, **Hospital/Clinic**, and **Admin**—with role-based pages, fully clickable working buttons, live MAVLink telemetry, and a 2D map display. Include all setup and run instructions in a README.
+
+**1. Project Structure**  
+- `app.py` (Flask app factory, Blueprints)  
+- `models.py` (SQLAlchemy models: User with role, Drone, Mission, TelemetryLog)  
+- `views/` (Blueprints for auth, patient, clinic, admin)  
+- `templates/` (Jinja2 HTML: base.html, login.html, patient.html, clinic.html, admin.html)  
+- `static/` (CSS, JS—include Bootstrap & Leaflet via CDN)  
+- `README.md`
+
+**2. Authentication & Authorization**  
+- Login/logout with Flask-Login.  
+- Seed users: patient@example.com (patient), clinic@example.com (clinic), admin@example.com (admin).  
+- Protect routes by role.
+
+**3. Patient/Customer Mode** (`/patient`)  
+- **Request Delivery** button → form (address, payload) → POST to create Mission(status=pending).  
+- **Track My Drone** button → opens map modal (Leaflet 2D map) showing live path from `/api/telemetry?mission_id=` polling every second.  
+- **My Requests** table → status badges, “View Map” and “Download Log” buttons.
+
+**4. Hospital/Clinic Mode** (`/clinic`)  
+- **View Pending Requests** table → “Accept”/“Reject” buttons updating Mission.status via `/api/missions/<id>/accept` etc.  
+- **Dispatch Drone** button next to accepted missions → POST to `/api/missions/<id>/dispatch`, sets status=in-flight, starts telemetry stream.  
+- **Live Operations** section → 2D map with all in-flight missions’ real-time trajectories and telemetry widgets (battery, GPS, link quality) updated via `/api/telemetry`.
+
+**5. Admin Mode** (`/admin`)  
+- **Manage Users**: CRUD UI for User model.  
+- **Manage Drones**: CRUD UI for Drone model (name, type).  
+- **All Missions** table with filters → buttons to “Cancel,” “Complete,” with API calls.  
+- **System Monitor**: aggregate map of all live missions and summary telemetry stats.
+
+**6. Live Telemetry & 2D Map**  
+- Telemetry endpoint `/api/telemetry?mission_id=` returns JSON array of `{lat, lon, alt, speed, battery, timestamp}`.  
+- Frontend uses Leaflet.js to plot polylines and markers, updating every second.  
+- Telemetry logs saved in `TelemetryLog(id, mission_id, lat, lon, alt, speed, battery, timestamp)`.
+
+**7. Backend Details**  
+- Flask-SQLAlchemy, Flask-Login.  
+- Models:  
+  ```python
+  class User(...): id, email, password_hash, role
+  class Drone(...): id, name, status
+  class Mission(...): id, user_id, drone_id, payload, address, status, created_at
+  class TelemetryLog(...): id, mission_id, lat, lon, alt, speed, battery, timestamp

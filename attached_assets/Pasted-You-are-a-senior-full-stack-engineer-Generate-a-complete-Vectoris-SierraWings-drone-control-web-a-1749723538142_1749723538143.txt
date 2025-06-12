@@ -1,0 +1,50 @@
+You are a senior full-stack engineer. Generate a complete Vectoris (SierraWings) drone control web application in a new Replit project, with all files laid out. Use Python/Flask for the backend, SQLite (via SQLAlchemy) for persistence, and a simple Vanilla JS + Bootstrap frontend. The app must support three user roles—**Patient/Customer**, **Hospital/Clinic**, and **Admin**—with role-based pages and fully clickable, working buttons. Include all setup and run instructions in a README.
+
+**1. Project Structure**  
+- `app.py` (Flask app factory, Blueprints)  
+- `models.py` (SQLAlchemy models: User with role, Drone, Mission, Log)  
+- `views/` (Blueprints for auth, patient, clinic, admin)  
+- `templates/` (Jinja2 HTML: base.html, login.html, patient.html, clinic.html, admin.html)  
+- `static/` (CSS, JS—include Bootstrap via CDN)  
+- `README.md`
+
+**2. Authentication & Authorization**  
+- Implement login/logout with Flask-Login.  
+- Seed three users (patient@example.com, clinic@example.com, admin@example.com) with roles “patient”, “clinic”, “admin”.  
+- Protect routes by role: patients see only their own requests; clinics see incoming missions; admins see everything.
+
+**3. Patient/Customer Mode**  
+- **Page**: `/patient`  
+- **Features & Buttons**:  
+  - “Request Delivery” → opens a form (address, payload details) → on submit, writes a Mission row with status “pending”  
+  - “Track My Drone” → realtime map placeholder showing dummy or live path (update with JS fetch every second)  
+  - “My Requests” → table listing this user’s missions with status badges  
+
+**4. Hospital/Clinic Mode**  
+- **Page**: `/clinic`  
+- **Features & Buttons**:  
+  - “View Pending Requests” → table of all “pending” missions → each row has “Accept” and “Reject” buttons that update status  
+  - “Dispatch Drone” → next to “accepted” missions → clicking sends a MAVLink stub endpoint (no real drone required) and sets status to “in-flight”  
+
+**5. Admin Mode**  
+- **Page**: `/admin`  
+- **Features & Buttons**:  
+  - “Manage Users” → CRUD interface for users (create, edit roles, delete)  
+  - “Manage Drones” → CRUD for drones (name, capabilities)  
+  - “All Missions” → full table with filters by status, date, user → buttons to “Cancel” or “Complete”  
+
+**6. Backend Details**  
+- Use Flask-SQLAlchemy and Flask-Login.  
+- Define models: `User(id, email, password_hash, role)`, `Drone(id, name)`, `Mission(id, user_id, drone_id, payload, address, status, created_at)`.  
+- Write simple stub endpoints under `/api/…` to handle button actions (accept, reject, dispatch, complete).
+
+**7. Frontend Details**  
+- Base layout (`base.html`) loads Bootstrap CSS/JS.  
+- Use Jinja for templates and Vanilla JS `fetch()` calls to `/api/...` endpoints.  
+- Update DOM on success.  
+
+**8. Running & Deployment**  
+- In `README.md`, include Replit-specific instructions to install dependencies (`pip install flask flask-login flask-sqlalchemy`) and run (`flask run --host=0.0.0.0`).
+
+**Output**:  
+Generate all code files and `README.md`. Ensure every button is wired to an API route and shows a JS alert or updates the page on success. Do not omit any file—deliver a turnkey full-stack app.
