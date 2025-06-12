@@ -322,11 +322,7 @@ function updateAdminTelemetry() {
         });
     
     // Generate telemetry data
-    fetch(`/api/telemetry/simulate/${adminCurrentMissionId}`, {
-        method: 'POST'
-    }).catch(error => {
-        console.error('Error generating telemetry:', error);
-    });
+    // Telemetry data retrieved from authentic drone sensors only
 }
 
 function viewMissionDetails(missionId) {

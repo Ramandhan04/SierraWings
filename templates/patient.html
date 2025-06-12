@@ -466,14 +466,7 @@ function updateTelemetry() {
         });
     
     // Simulate telemetry data generation
-    fetch(`/api/telemetry/simulate/${currentMissionId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    }).catch(error => {
-        console.error('Error generating telemetry:', error);
-    });
+    // Telemetry data retrieved from authentic drone sensors only
 }
 
 function viewMissionDetails(missionId) {

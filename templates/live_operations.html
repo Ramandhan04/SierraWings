@@ -225,21 +225,17 @@ function loadAllMissionTelemetry() {
 
 function loadMissionTelemetry(missionId) {
     // Generate new telemetry data
-    fetch(`/api/telemetry/simulate/${missionId}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    }).then(() => {
-        // Fetch updated telemetry
-        return fetch(`/api/telemetry?mission_id=${missionId}`);
-    }).then(response => response.json()).then(data => {
-        if (data.length > 0) {
-            updateMissionDisplay(missionId, data);
-        }
-    }).catch(error => {
-        console.error(`Error loading telemetry for mission ${missionId}:`, error);
-    });
+    // Fetch telemetry from authentic drone sensors only
+    fetch(`/api/telemetry?mission_id=${missionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                updateMissionDisplay(missionId, data);
+            }
+        })
+        .catch(error => {
+            console.error(`Error loading telemetry for mission ${missionId}:`, error);
+        });
 }
 
 function updateMissionDisplay(missionId, telemetryData) {
