@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Failed - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-danger text-white text-center py-4">
+                    <div class="error-icon mb-3">
+                        <i class="fas fa-exclamation-triangle fa-4x"></i>
+                    </div>
+                    <h2 class="mb-0">Payment Failed</h2>
+                    <p class="mb-0">There was an issue processing your payment</p>
+                </div>
+                
+                <div class="card-body p-5">
+                    <div class="error-details text-center mb-4">
+                        <h5 class="text-muted">Payment could not be completed</h5>
+                        <p class="text-muted">
+                            Your payment was not processed successfully. Please check your payment details and try again.
+                        </p>
+                    </div>
+                    
+                    <div class="common-issues">
+                        <h6 class="mb-3">Common Issues:</h6>
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                Insufficient balance in mobile money account
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                Incorrect PIN or card details
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                Network connectivity issues
+                            </li>
+                            <li class="mb-2">
+                                <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                                Payment provider temporary unavailability
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button class="btn btn-primary btn-lg" onclick="history.back()">
+                            <i class="fas fa-redo me-2"></i>Try Payment Again
+                        </button>
+                        <a href="{{ url_for('patient.dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                    
+                    <div class="support-info mt-4 text-center">
+                        <small class="text-muted">
+                            Need help? Contact our support team at 
+                            <a href="mailto:support@sierrawings.com">support@sierrawings.com</a>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-icon {
+    animation: shake 1s infinite;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+</style>
+{% endblock %}
