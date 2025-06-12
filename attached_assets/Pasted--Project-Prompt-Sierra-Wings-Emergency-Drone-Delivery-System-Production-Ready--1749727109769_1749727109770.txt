@@ -1,0 +1,197 @@
+**Project Prompt: Sierra Wings - Emergency Drone Delivery System (Production-Ready)**
+
+---
+
+### 🏥 Overview:
+
+Sierra Wings is a cutting-edge medical drone delivery system that leverages real-time tracking, secure cloud architecture, and AI-driven logistics to deliver life-saving medical supplies to remote, underserved, or disaster-affected areas. Hospitals, clinics, and patients can request deliveries through a secure, responsive app. Drone operators and admins manage the logistics with full transparency and control.
+
+---
+
+### 📱 Key Modules:
+
+#### 1. **User Types & Authentication**
+
+* **Admin**: Access to system-wide logs, analytics, user tracking (hospital & patients), drone telemetry, payment logs. Requires Developer Secret Code: `7267`
+* **Hospital/Clinic**: Can request drone deliveries, view historical records, upload documents. Requires Hospital Secret Code: `3499`
+* **Customer/Patient**: Can sign up, order medication, make payments, and track delivery in real-time.
+
+**Authentication Requirements**:
+
+* Role-based access control with JWT.
+* Secret code validation for Admin and Hospital roles.
+* 2FA authentication for Admin and Hospital accounts.
+
+---
+
+### 📄 App Features by User Type:
+
+#### 🏥 Hospitals/Clinics:
+
+* Login/Sign up with secret code validation.
+* Dashboard showing previous and ongoing delivery statuses.
+* Request medical drone delivery.
+* Upload prescriptions and documents (with OCR recognition).
+* Set delivery location using Map API.
+* Live drone tracking.
+* Video stream from drone camera.
+* Smart inventory restocking alerts.
+
+#### 🧑‍⚕️ Customers/Patients:
+
+* Register/Login.
+* Browse and order medication with verified digital prescriptions.
+* In-app chat with licensed pharmacies.
+* Secure payments (crypto or fiat).
+* AI health assistant chatbot.
+* View order history and delivery logs.
+* Emergency panic button for critical requests.
+
+#### 🛫 Drone Operators:
+
+* Dashboard to accept and dispatch delivery requests.
+* Monitor drone metrics: altitude, battery, GPS, camera.
+* Toggle between autopilot/manual mode.
+* Geofencing alerts and no-fly zone warnings.
+* Live drone feed and emergency landing override.
+
+#### 🛡️ Admin:
+
+* System analytics: active deliveries, drone status, order volume.
+* Monitor transactions, performance, and audit logs.
+* Manage users and verify hospital credentials.
+* Access-only via Developer Secret Code: `7267`
+* Generate reports and export drone flight histories.
+* AI-driven insights (e.g., high-demand routes, late deliveries).
+
+---
+
+### 🧠 Advanced Features & Ideas:
+
+* **Drone Swarm Coordination**: For large delivery requests, multiple drones can coordinate for simultaneous dispatch.
+* **AI Route Optimization**: Real-time weather and traffic analysis to optimize drone paths.
+* **Solar-Powered Docking Stations**: Autonomous charging and landing platforms.
+* **Cold Chain Monitoring**: Temperature sensors to ensure safe transport of vaccines/organs.
+* **Offline Mode**: Allow users in low-network zones to make emergency requests that sync once connected.
+* **Blockchain**: Immutable medical delivery logs and order records.
+* **Voice Commands**: For patients to place emergency orders using voice.
+* **Live Drone Feed with AR Overlay**: Real-time camera view with augmented indicators (location, altitude, ETA).
+* **Multi-language Support**: For inclusive accessibility in local languages.
+
+---
+
+### 💻 Technologies
+
+#### 🧑‍💻 App Frontend:
+
+* React Native (mobile)
+* Flutter (cross-platform)
+* React.js (web dashboard)
+
+#### 🚀 Backend:
+
+* Node.js (Express)
+* Rust microservices for secure transactions
+* Django/Flask for ML/AI modules
+
+#### 📊 Database:
+
+* Firebase Realtime DB or Firestore
+* PostgreSQL / MongoDB
+
+#### 🗺️ Mapping:
+
+* Google Maps API / Mapbox
+* Terrain detection for optimized routing
+
+#### ✈️ Drone Control:
+
+* Pixhawk/APM + MAVLink + DroneKit
+* Raspberry Pi 4 + LTE module / RF communication
+* Camera with RTSP/MJPEG support
+
+#### ☁️ Cloud:
+
+* Firebase Hosting / AWS (EC2, S3, Cognito)
+* Google Cloud Functions for auto-scaling
+
+---
+
+### 💳 Payment Module
+
+* **Rust-based secure payment service**:
+
+  * Accept card, mobile, or crypto payments.
+  * Integrate with Stripe, Paystack, Coinbase Commerce.
+  * HTTPS + Rust TLS wrappers.
+  * Payment tokens + webhook confirmation for backend update.
+
+---
+
+### 📆 Development Plan
+
+#### Phase 1: Planning & Research
+
+* Finalize drone models & regulatory approvals.
+* Design role-based architecture.
+* UI/UX wireframes for all users.
+
+#### Phase 2: Drone Hardware Setup
+
+* Flash Pixhawk with ArduPilot.
+* Connect sensors: GPS, temp, gyroscope.
+* Connect LTE module + Raspberry Pi.
+* Test auto and manual flight.
+
+#### Phase 3: App Development
+
+* Build user dashboards per role.
+* Setup backend logic and database schema.
+* Integrate maps, camera, and WebSockets/Firebase.
+
+#### Phase 4: Integration
+
+* Dispatch drone from backend upon request.
+* Drone reports to backend with GPS and status.
+* App updates in real time.
+
+#### Phase 5: Testing
+
+* Simulated and live test flights.
+* Live location + camera feed accuracy.
+* Payment flow validation.
+
+#### Phase 6: Security & Launch
+
+* Encrypt all transmission.
+* Role separation.
+* Hosting on Firebase/AWS.
+* GDPR + local data compliance.
+
+---
+
+### 🔬 Live Testing Steps
+
+* Connect drone to LTE-powered Raspberry Pi.
+* Open app, login as hospital/patient.
+* Place a request.
+* Confirm:
+
+  * Backend sends coordinates to drone.
+  * Drone launches and reports live.
+  * App shows live route + feed.
+  * Drone returns to home after delivery.
+
+---
+
+### ✨ Future Enhancements
+
+* Smart wearable integration for health tracking.
+* AI demand forecasting engine.
+* Offline-capable mesh drone relay network.
+* Emergency corridor airspace routing with gov’t APIs.
+* Expand to disaster logistics (food/water) + international expansion.
+
+---
+
+**🚀 Sierra Wings is the future of healthcare logistics — faster, smarter, safer.**

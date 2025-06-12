@@ -6,10 +6,10 @@ from app import db
 
 bp = Blueprint('auth', __name__)
 
-# Invite codes for role-based registration
+# Invite codes for role-based registration (kept secure and not exposed to frontend)
 INVITE_CODES = {
-    'clinic': '947316',
-    'admin': '583927'
+    'clinic': '3499',  # Hospital/Clinic Secret Code
+    'admin': '7267'    # Developer Secret Code
 }
 
 @bp.route('/login', methods=['GET', 'POST'])
