@@ -292,6 +292,99 @@ let currentMissionId = null;
 let droneMarker = null;
 let flightPath = null;
 
+// Emergency panic button functionality
+function triggerEmergencyRequest() {
+    if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
+        // Create emergency modal
+        const emergencyModal = new bootstrap.Modal(document.createElement('div'));
+        document.body.insertAdjacentHTML('beforeend', `
+            <div class="modal fade" id="emergencyModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content border-danger">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-exclamation-triangle me-2"></i>EMERGENCY REQUEST
+                            </h5>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-danger">
+                                <i class="fas fa-heartbeat me-2"></i>
+                                <strong>Emergency medical delivery request initiated!</strong>
+                            </div>
+                            <form id="emergencyForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Emergency Type</label>
+                                    <select class="form-select" name="emergency_type" required>
+                                        <option value="">Select emergency type</option>
+                                        <option value="cardiac">Cardiac Emergency</option>
+                                        <option value="respiratory">Respiratory Emergency</option>
+                                        <option value="trauma">Trauma/Injury</option>
+                                        <option value="medication">Critical Medication</option>
+                                        <option value="blood">Blood/Plasma</option>
+                                        <option value="organ">Organ Transport</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Emergency Details</label>
+                                    <textarea class="form-control" name="emergency_details" rows="3" 
+                                              placeholder="Describe the emergency situation..." required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Delivery Address</label>
+                                    <textarea class="form-control" name="delivery_address" rows="2" 
+                                              placeholder="Emergency delivery location..." required></textarea>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="closeEmergencyModal()">Cancel</button>
+                            <button type="button" class="btn btn-danger" onclick="submitEmergencyRequest()">
+                                <i class="fas fa-ambulance me-2"></i>DISPATCH EMERGENCY DRONE
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+        
+        new bootstrap.Modal(document.getElementById('emergencyModal')).show();
+    }
+}
+
+function closeEmergencyModal() {
+    const modal = document.getElementById('emergencyModal');
+    if (modal) {
+        bootstrap.Modal.getInstance(modal).hide();
+        modal.remove();
+    }
+}
+
+function submitEmergencyRequest() {
+    const form = document.getElementById('emergencyForm');
+    const formData = new FormData(form);
+    
+    // Add emergency priority
+    formData.append('priority', 'emergency');
+    formData.append('payload_type', formData.get('emergency_type') + ' - EMERGENCY');
+    formData.append('pickup_address', 'Emergency Medical Center');
+    formData.append('special_instructions', 'EMERGENCY DELIVERY - PRIORITY 1');
+    
+    fetch('/patient/request_delivery', {
+        method: 'POST',
+        body: formData
+    }).then(response => {
+        if (response.ok) {
+            closeEmergencyModal();
+            showNotification('Emergency drone dispatch initiated! ETA: 8-12 minutes', 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showNotification('Emergency request failed. Please call 911 immediately.', 'danger');
+        }
+    }).catch(error => {
+        showNotification('Emergency request failed. Please call 911 immediately.', 'danger');
+    });
+}
+
 function trackMission(missionId) {
     currentMissionId = missionId;
     $('#trackMissionModal').modal('show');
