@@ -264,28 +264,65 @@ function viewDroneDetails(droneId) {
     `;
     modal.show();
     
-    // Simulate API call
-    setTimeout(() => {
-        document.getElementById('droneDetailsContent').innerHTML = `
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>Basic Information</h6>
-                    <p><strong>Drone ID:</strong> ${droneId}</p>
-                    <p><strong>Status:</strong> <span class="badge bg-success">Available</span></p>
-                    <p><strong>Battery:</strong> 95%</p>
+    // Fetch actual drone data from database
+    fetch(`/api/drone/${droneId}`)
+        .then(response => response.json())
+        .then(drone => {
+            document.getElementById('droneDetailsContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Basic Information</h6>
+                        <p><strong>Drone ID:</strong> ${drone.id}</p>
+                        <p><strong>Name:</strong> ${drone.name}</p>
+                        <p><strong>Model:</strong> ${drone.model}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(drone.status)}">${drone.status}</span></p>
+                        <p><strong>Battery:</strong> ${drone.battery_level}%</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Location & Maintenance</h6>
+                        ${drone.location_lat && drone.location_lon ? 
+                            `<p><strong>Location:</strong> ${drone.location_lat.toFixed(4)}, ${drone.location_lon.toFixed(4)}</p>` : 
+                            '<p><strong>Location:</strong> Not available</p>'
+                        }
+                        ${drone.last_maintenance ? 
+                            `<p><strong>Last Maintenance:</strong> ${new Date(drone.last_maintenance).toLocaleDateString()}</p>` : 
+                            '<p><strong>Last Maintenance:</strong> Never</p>'
+                        }
+                        <p><strong>Created:</strong> ${new Date(drone.created_at).toLocaleDateString()}</p>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <h6>Technical Specs</h6>
-                    <p><strong>Max Payload:</strong> 5 kg</p>
-                    <p><strong>Max Range:</strong> 25 km</p>
-                    <p><strong>Flight Time:</strong> 45 min</p>
+                <hr>
+                <h6>Recent Activity</h6>
+                <div id="droneRecentMissions">Loading missions...</div>
+            `;
+            
+            // Load recent missions for this drone
+            fetch(`/api/drone/${droneId}/missions`)
+                .then(response => response.json())
+                .then(missions => {
+                    const missionsHtml = missions.length > 0 ? 
+                        missions.map(mission => `
+                            <div class="mission-item mb-2 p-2 border rounded">
+                                <strong>Mission #${mission.id}</strong> - ${mission.status}
+                                <br><small class="text-muted">${mission.payload_type} - ${new Date(mission.created_at).toLocaleDateString()}</small>
+                            </div>
+                        `).join('') : 
+                        '<p class="text-muted">No recent missions found.</p>';
+                    
+                    document.getElementById('droneRecentMissions').innerHTML = missionsHtml;
+                })
+                .catch(() => {
+                    document.getElementById('droneRecentMissions').innerHTML = '<p class="text-muted">Unable to load mission history.</p>';
+                });
+        })
+        .catch(error => {
+            document.getElementById('droneDetailsContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error loading drone details. Please try again.
                 </div>
-            </div>
-            <hr>
-            <h6>Recent Activity</h6>
-            <p class="text-muted">No recent missions found.</p>
-        `;
-    }, 1000);
+            `;
+        });
 }
 
 // Form validation

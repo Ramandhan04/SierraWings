@@ -73,56 +73,8 @@ def internal_error(error):
     db.session.rollback()
     return render_template('500.html'), 500
 
-def create_sample_data():
-    """Create sample data for testing"""
-    from werkzeug.security import generate_password_hash
-    
-    # Create sample users if they don't exist
-    if not User.query.filter_by(email='patient@example.com').first():
-        patient_user = User(
-            email='patient@example.com',
-            password_hash=generate_password_hash('password123'),
-            role='patient',
-            first_name='John',
-            last_name='Doe'
-        )
-        db.session.add(patient_user)
-    
-    if not User.query.filter_by(email='clinic@example.com').first():
-        clinic_user = User(
-            email='clinic@example.com',
-            password_hash=generate_password_hash('password123'),
-            role='clinic',
-            first_name='City',
-            last_name='Hospital'
-        )
-        db.session.add(clinic_user)
-    
-    if not User.query.filter_by(email='admin@example.com').first():
-        admin_user = User(
-            email='admin@example.com',
-            password_hash=generate_password_hash('password123'),
-            role='admin',
-            first_name='System',
-            last_name='Administrator'
-        )
-        db.session.add(admin_user)
-    
-    # Create sample drones
-    if not Drone.query.first():
-        drones = [
-            Drone(name='SW-001', model='SierraWings Medical', status='available'),
-            Drone(name='SW-002', model='SierraWings Emergency', status='available'),
-            Drone(name='SW-003', model='SierraWings Standard', status='maintenance')
-        ]
-        for drone in drones:
-            db.session.add(drone)
-    
-    db.session.commit()
-
 with app.app_context():
     db.create_all()
-    create_sample_data()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -249,3 +249,104 @@ def get_mission_stats():
     }
     
     return jsonify(stats)
+
+@bp.route('/mission/<int:mission_id>', methods=['GET'])
+@login_required
+def get_mission_details(mission_id):
+    """Get detailed mission information"""
+    mission = Mission.query.get(mission_id)
+    if not mission:
+        return jsonify({'error': 'Mission not found'}), 404
+    
+    # Check access permissions
+    if current_user.role == 'patient' and mission.user_id != current_user.id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        mission_data = {
+            'id': mission.id,
+            'status': mission.status,
+            'priority': mission.priority,
+            'payload_type': mission.payload_type,
+            'payload_weight': mission.payload_weight,
+            'pickup_address': mission.pickup_address,
+            'delivery_address': mission.delivery_address,
+            'special_instructions': mission.special_instructions,
+            'notes': mission.notes,
+            'created_at': mission.created_at.isoformat() if mission.created_at else None,
+            'accepted_at': mission.accepted_at.isoformat() if mission.accepted_at else None,
+            'started_at': mission.started_at.isoformat() if mission.started_at else None,
+            'completed_at': mission.completed_at.isoformat() if mission.completed_at else None,
+            'user': {
+                'id': mission.user.id,
+                'full_name': mission.user.full_name,
+                'email': mission.user.email
+            },
+            'drone': {
+                'id': mission.drone.id,
+                'name': mission.drone.name,
+                'model': mission.drone.model
+            } if mission.drone else None
+        }
+        
+        return jsonify(mission_data)
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch mission details'}), 500
+
+@bp.route('/drone/<int:drone_id>', methods=['GET'])
+@login_required
+def get_drone_details(drone_id):
+    """Get detailed drone information"""
+    if current_user.role not in ['clinic', 'admin']:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    drone = Drone.query.get(drone_id)
+    if not drone:
+        return jsonify({'error': 'Drone not found'}), 404
+    
+    try:
+        drone_data = {
+            'id': drone.id,
+            'name': drone.name,
+            'model': drone.model,
+            'status': drone.status,
+            'battery_level': drone.battery_level,
+            'location_lat': drone.location_lat,
+            'location_lon': drone.location_lon,
+            'created_at': drone.created_at.isoformat() if drone.created_at else None,
+            'last_maintenance': drone.last_maintenance.isoformat() if drone.last_maintenance else None
+        }
+        
+        return jsonify(drone_data)
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch drone details'}), 500
+
+@bp.route('/drone/<int:drone_id>/missions', methods=['GET'])
+@login_required
+def get_drone_missions(drone_id):
+    """Get recent missions for a specific drone"""
+    if current_user.role not in ['clinic', 'admin']:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    drone = Drone.query.get(drone_id)
+    if not drone:
+        return jsonify({'error': 'Drone not found'}), 404
+    
+    try:
+        # Get last 10 missions for this drone
+        missions = Mission.query.filter_by(drone_id=drone_id)\
+                               .order_by(Mission.created_at.desc())\
+                               .limit(10).all()
+        
+        missions_data = [{
+            'id': mission.id,
+            'status': mission.status,
+            'priority': mission.priority,
+            'payload_type': mission.payload_type,
+            'created_at': mission.created_at.isoformat() if mission.created_at else None,
+            'completed_at': mission.completed_at.isoformat() if mission.completed_at else None
+        } for mission in missions]
+        
+        return jsonify(missions_data)
+    except Exception as e:
+        return jsonify({'error': 'Failed to fetch drone missions'}), 500

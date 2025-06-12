@@ -339,33 +339,43 @@ function viewMissionDetails(missionId) {
     `;
     modal.show();
     
-    // Simulate loading mission details
-    setTimeout(() => {
-        document.getElementById('missionDetailsContent').innerHTML = `
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>Mission Information</h6>
-                    <p><strong>Mission ID:</strong> #${missionId}</p>
-                    <p><strong>Status:</strong> <span class="badge bg-primary">In Progress</span></p>
-                    <p><strong>Priority:</strong> <span class="badge bg-warning">High</span></p>
+    // Fetch actual mission details from database
+    fetch(`/api/mission/${missionId}`)
+        .then(response => response.json())
+        .then(mission => {
+            document.getElementById('missionDetailsContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Mission Information</h6>
+                        <p><strong>Mission ID:</strong> #${mission.id}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(mission.status)}">${mission.status}</span></p>
+                        <p><strong>Priority:</strong> <span class="badge bg-${getPriorityColor(mission.priority)}">${mission.priority}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Patient Information</h6>
+                        <p><strong>Name:</strong> ${mission.user.full_name}</p>
+                        <p><strong>Contact:</strong> ${mission.user.email}</p>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <h6>Patient Information</h6>
-                    <p><strong>Name:</strong> John Doe</p>
-                    <p><strong>Contact:</strong> john@example.com</p>
+                <hr>
+                <h6>Payload Details</h6>
+                <p><strong>Type:</strong> ${mission.payload_type}</p>
+                ${mission.payload_weight ? `<p><strong>Weight:</strong> ${mission.payload_weight} kg</p>` : ''}
+                ${mission.special_instructions ? `<p><strong>Special Instructions:</strong> ${mission.special_instructions}</p>` : ''}
+                <hr>
+                <h6>Route Information</h6>
+                <p><strong>Pickup:</strong> ${mission.pickup_address}</p>
+                <p><strong>Delivery:</strong> ${mission.delivery_address}</p>
+            `;
+        })
+        .catch(error => {
+            document.getElementById('missionDetailsContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error loading mission details. Please try again.
                 </div>
-            </div>
-            <hr>
-            <h6>Payload Details</h6>
-            <p><strong>Type:</strong> Medical Supplies</p>
-            <p><strong>Weight:</strong> 2.5 kg</p>
-            <p><strong>Special Instructions:</strong> Handle with care, temperature sensitive</p>
-            <hr>
-            <h6>Route Information</h6>
-            <p><strong>Pickup:</strong> City Hospital, 123 Medical Center Dr</p>
-            <p><strong>Delivery:</strong> Patient Home, 456 Residential St</p>
-        `;
-    }, 1000);
+            `;
+        });
 }
 
 // Update live durations every minute
