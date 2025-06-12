@@ -19,6 +19,10 @@ class User(UserMixin, db.Model):
     two_factor_secret = db.Column(db.String(32))  # TOTP secret
     backup_codes = db.Column(db.Text)  # JSON array of backup codes
     
+    # Password reset tokens
+    reset_token = db.Column(db.String(128))
+    reset_token_expires = db.Column(db.DateTime)
+    
     # Relationships
     missions = db.relationship('Mission', backref='user', lazy=True)
     
@@ -40,6 +44,7 @@ class ClinicProfile(db.Model):
     # Location details
     address = db.Column(db.Text, nullable=False)
     city = db.Column(db.String(50), nullable=False)
+    region = db.Column(db.String(100), nullable=False)  # Western/Eastern/Central Freetown, North/East/West Ward Bo
     state = db.Column(db.String(50), nullable=False)
     zip_code = db.Column(db.String(10), nullable=False)
     latitude = db.Column(db.Float)

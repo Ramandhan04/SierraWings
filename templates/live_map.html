@@ -1,0 +1,585 @@
+{% extends "base.html" %}
+
+{% block title %}Live Drone Tracking - SierraWings{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+#liveMap {
+    height: 70vh;
+    border-radius: 8px;
+    border: 2px solid #dee2e6;
+}
+
+.drone-status {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 280px;
+}
+
+.signal-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.signal-bars {
+    display: flex;
+    gap: 2px;
+    align-items: end;
+}
+
+.signal-bar {
+    width: 4px;
+    background: #ddd;
+    border-radius: 2px;
+}
+
+.signal-bar.active {
+    background: #28a745;
+}
+
+.signal-bar:nth-child(1) { height: 8px; }
+.signal-bar:nth-child(2) { height: 12px; }
+.signal-bar:nth-child(3) { height: 16px; }
+.signal-bar:nth-child(4) { height: 20px; }
+.signal-bar:nth-child(5) { height: 24px; }
+
+.telemetry-data {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+
+.telemetry-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.drone-path {
+    stroke: #007bff;
+    stroke-width: 3;
+    fill: none;
+    stroke-dasharray: 5,5;
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -10;
+    }
+}
+
+.landing-zone {
+    fill: rgba(40, 167, 69, 0.3);
+    stroke: #28a745;
+    stroke-width: 2;
+    stroke-dasharray: 8,4;
+}
+
+.mission-controls {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-in-flight { background: #cce5ff; color: #0066cc; }
+.status-completed { background: #d4edda; color: #155724; }
+.status-emergency { background: #f8d7da; color: #721c24; }
+.status-landing { background: #fff3cd; color: #856404; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-satellite-dish me-2"></i>Live Drone Tracking
+                    </h2>
+                    <p class="text-muted mb-0">Real-time monitoring of active drone missions</p>
+                </div>
+                <div>
+                    <div class="btn-group me-2">
+                        <button class="btn btn-outline-primary" onclick="toggleAutoRefresh()">
+                            <i class="fas fa-sync-alt me-2" id="refreshIcon"></i>
+                            <span id="refreshText">Auto Refresh: ON</span>
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="centerMap()">
+                            <i class="fas fa-crosshairs me-2"></i>Center Map
+                        </button>
+                    </div>
+                    <a href="{{ url_for(current_user.role + '.dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mission Controls -->
+    <div class="mission-controls">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <h5 class="mb-0">
+                    <i class="fas fa-rocket me-2"></i>Mission Control
+                </h5>
+                <p class="text-muted small mb-0">Active missions: <span id="activeMissionCount">0</span></p>
+            </div>
+            <div class="col-md-4">
+                <select class="form-select" id="missionSelect" onchange="focusMission()">
+                    <option value="">Select Mission to Track</option>
+                </select>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-info" onclick="showAllMissions()">
+                        <i class="fas fa-eye me-1"></i>Show All
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="emergencyAlert()">
+                        <i class="fas fa-exclamation-triangle me-1"></i>Emergency
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map Container -->
+    <div class="position-relative">
+        <div id="liveMap"></div>
+        
+        <!-- Drone Status Panel -->
+        <div class="drone-status" id="droneStatus" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0"><i class="fas fa-drone me-2"></i>Drone Status</h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="closeDroneStatus()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="signal-indicator">
+                <span class="small text-muted">Signal:</span>
+                <div class="signal-bars" id="signalBars">
+                    <div class="signal-bar"></div>
+                    <div class="signal-bar"></div>
+                    <div class="signal-bar"></div>
+                    <div class="signal-bar"></div>
+                    <div class="signal-bar"></div>
+                </div>
+                <span class="small" id="signalStrength">100%</span>
+            </div>
+            
+            <div class="telemetry-data" id="telemetryData">
+                <div class="telemetry-item">
+                    <span>Battery:</span>
+                    <span id="batteryLevel">--</span>
+                </div>
+                <div class="telemetry-item">
+                    <span>Altitude:</span>
+                    <span id="altitude">--</span>
+                </div>
+                <div class="telemetry-item">
+                    <span>Speed:</span>
+                    <span id="speed">--</span>
+                </div>
+                <div class="telemetry-item">
+                    <span>Heading:</span>
+                    <span id="heading">--</span>
+                </div>
+                <div class="telemetry-item">
+                    <span>Flight Mode:</span>
+                    <span id="flightMode">--</span>
+                </div>
+                <div class="telemetry-item">
+                    <span>Temperature:</span>
+                    <span id="temperature">--</span>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small text-muted">Mission Status:</span>
+                    <span class="status-badge" id="missionStatus">In Flight</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mission Timeline -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Mission Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <div id="missionTimeline" class="timeline">
+                        <!-- Timeline items will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let map;
+let droneMarkers = {};
+let missionPaths = {};
+let landingZones = {};
+let autoRefresh = true;
+let refreshInterval;
+let selectedMission = null;
+
+// Initialize map
+function initializeMap() {
+    // Center on Sierra Leone
+    map = L.map('liveMap').setView([8.4657, -11.7799], 10);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Add map controls
+    map.on('click', function(e) {
+        if (selectedMission) {
+            // Allow emergency landing spot selection
+            showLandingSpotDialog(e.latlng);
+        }
+    });
+}
+
+// Create custom drone icon
+function createDroneIcon(status = 'in_flight', batteryLevel = 100) {
+    let color = '#007bff';
+    if (status === 'emergency') color = '#dc3545';
+    else if (status === 'landing') color = '#ffc107';
+    else if (status === 'completed') color = '#28a745';
+    
+    return L.divIcon({
+        html: `
+            <div style="position: relative;">
+                <i class="fas fa-drone" style="color: ${color}; font-size: 24px;"></i>
+                <div style="position: absolute; top: -8px; right: -8px; background: ${batteryLevel > 20 ? '#28a745' : '#dc3545'}; 
+                           color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; 
+                           display: flex; align-items: center; justify-content: center;">
+                    ${batteryLevel}
+                </div>
+            </div>
+        `,
+        className: 'drone-marker',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+    });
+}
+
+// Update drone positions
+function updateDronePositions() {
+    fetch('/api/telemetry')
+        .then(response => response.json())
+        .then(data => {
+            updateMissionSelect(data.missions);
+            
+            data.missions.forEach(mission => {
+                updateDroneOnMap(mission);
+                updateMissionPath(mission);
+            });
+            
+            if (selectedMission) {
+                updateDroneStatus(data.missions.find(m => m.id === selectedMission));
+            }
+            
+            updateMissionTimeline(data.recent_events);
+        })
+        .catch(error => {
+            console.error('Error fetching telemetry:', error);
+            showNotification('Connection lost - attempting to reconnect', 'warning');
+        });
+}
+
+// Update drone marker on map
+function updateDroneOnMap(mission) {
+    const droneId = mission.drone_id;
+    const latestTelemetry = mission.telemetry[mission.telemetry.length - 1];
+    
+    if (!latestTelemetry) return;
+    
+    const position = [latestTelemetry.latitude, latestTelemetry.longitude];
+    const icon = createDroneIcon(mission.status, latestTelemetry.battery_level);
+    
+    if (droneMarkers[droneId]) {
+        droneMarkers[droneId].setLatLng(position);
+        droneMarkers[droneId].setIcon(icon);
+    } else {
+        droneMarkers[droneId] = L.marker(position, { icon })
+            .addTo(map)
+            .on('click', () => selectMission(mission.id));
+    }
+    
+    // Update popup content
+    const popupContent = `
+        <div class="drone-popup">
+            <h6><i class="fas fa-drone me-2"></i>Mission #${mission.id}</h6>
+            <p class="mb-1"><strong>Status:</strong> ${mission.status}</p>
+            <p class="mb-1"><strong>Battery:</strong> ${latestTelemetry.battery_level}%</p>
+            <p class="mb-1"><strong>Altitude:</strong> ${latestTelemetry.altitude}m</p>
+            <p class="mb-0"><strong>Speed:</strong> ${latestTelemetry.speed} m/s</p>
+            <button class="btn btn-sm btn-primary mt-2" onclick="selectMission(${mission.id})">
+                Track Mission
+            </button>
+        </div>
+    `;
+    droneMarkers[droneId].bindPopup(popupContent);
+}
+
+// Update mission path
+function updateMissionPath(mission) {
+    if (!mission.telemetry || mission.telemetry.length < 2) return;
+    
+    const pathCoords = mission.telemetry.map(t => [t.latitude, t.longitude]);
+    
+    if (missionPaths[mission.id]) {
+        missionPaths[mission.id].setLatLngs(pathCoords);
+    } else {
+        missionPaths[mission.id] = L.polyline(pathCoords, {
+            color: '#007bff',
+            weight: 3,
+            opacity: 0.7,
+            className: 'drone-path'
+        }).addTo(map);
+    }
+}
+
+// Select mission for tracking
+function selectMission(missionId) {
+    selectedMission = missionId;
+    document.getElementById('missionSelect').value = missionId;
+    document.getElementById('droneStatus').style.display = 'block';
+    
+    // Focus map on selected mission
+    const mission = getCurrentMissionData(missionId);
+    if (mission && mission.telemetry.length > 0) {
+        const latest = mission.telemetry[mission.telemetry.length - 1];
+        map.setView([latest.latitude, latest.longitude], 15);
+    }
+}
+
+// Update drone status panel
+function updateDroneStatus(mission) {
+    if (!mission || !mission.telemetry.length) return;
+    
+    const latest = mission.telemetry[mission.telemetry.length - 1];
+    
+    // Update signal strength
+    const signalStrength = latest.signal_strength || 100;
+    updateSignalBars(signalStrength);
+    document.getElementById('signalStrength').textContent = signalStrength + '%';
+    
+    // Update telemetry data
+    document.getElementById('batteryLevel').textContent = latest.battery_level + '%';
+    document.getElementById('altitude').textContent = latest.altitude + 'm';
+    document.getElementById('speed').textContent = latest.speed + ' m/s';
+    document.getElementById('heading').textContent = latest.heading + '°';
+    document.getElementById('flightMode').textContent = latest.flight_mode || 'Auto';
+    document.getElementById('temperature').textContent = latest.temperature + '°C';
+    
+    // Update mission status
+    const statusElement = document.getElementById('missionStatus');
+    statusElement.textContent = mission.status.replace('_', ' ').toUpperCase();
+    statusElement.className = `status-badge status-${mission.status}`;
+}
+
+// Update signal bars
+function updateSignalBars(strength) {
+    const bars = document.querySelectorAll('.signal-bar');
+    const activeBars = Math.ceil((strength / 100) * 5);
+    
+    bars.forEach((bar, index) => {
+        if (index < activeBars) {
+            bar.classList.add('active');
+        } else {
+            bar.classList.remove('active');
+        }
+    });
+}
+
+// Toggle auto refresh
+function toggleAutoRefresh() {
+    autoRefresh = !autoRefresh;
+    const icon = document.getElementById('refreshIcon');
+    const text = document.getElementById('refreshText');
+    
+    if (autoRefresh) {
+        text.textContent = 'Auto Refresh: ON';
+        icon.style.animation = 'spin 2s linear infinite';
+        startAutoRefresh();
+    } else {
+        text.textContent = 'Auto Refresh: OFF';
+        icon.style.animation = 'none';
+        stopAutoRefresh();
+    }
+}
+
+// Start auto refresh
+function startAutoRefresh() {
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(updateDronePositions, 5000); // Update every 5 seconds
+}
+
+// Stop auto refresh
+function stopAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+}
+
+// Center map on Sierra Leone
+function centerMap() {
+    map.setView([8.4657, -11.7799], 10);
+}
+
+// Emergency alert
+function emergencyAlert() {
+    if (selectedMission) {
+        if (confirm('Trigger emergency landing for this mission?')) {
+            fetch(`/api/missions/${selectedMission}/emergency`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                showNotification('Emergency landing initiated', 'warning');
+            });
+        }
+    } else {
+        alert('Please select a mission first');
+    }
+}
+
+// Show landing spot dialog
+function showLandingSpotDialog(latlng) {
+    const confirmed = confirm(`Set emergency landing spot at ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}?`);
+    if (confirmed) {
+        // Create landing zone marker
+        const landingZone = L.circle(latlng, {
+            radius: 50,
+            className: 'landing-zone'
+        }).addTo(map);
+        
+        landingZones[selectedMission] = landingZone;
+        
+        // Send to server
+        fetch(`/api/missions/${selectedMission}/landing-spot`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                latitude: latlng.lat,
+                longitude: latlng.lng
+            })
+        });
+        
+        showNotification('Landing spot set successfully', 'success');
+    }
+}
+
+// Initialize everything
+document.addEventListener('DOMContentLoaded', function() {
+    initializeMap();
+    updateDronePositions();
+    startAutoRefresh();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    stopAutoRefresh();
+});
+
+// Additional helper functions
+function updateMissionSelect(missions) {
+    const select = document.getElementById('missionSelect');
+    const currentValue = select.value;
+    
+    select.innerHTML = '<option value="">Select Mission to Track</option>';
+    
+    missions.forEach(mission => {
+        const option = document.createElement('option');
+        option.value = mission.id;
+        option.textContent = `Mission #${mission.id} - ${mission.status}`;
+        select.appendChild(option);
+    });
+    
+    if (currentValue) {
+        select.value = currentValue;
+    }
+    
+    document.getElementById('activeMissionCount').textContent = missions.length;
+}
+
+function focusMission() {
+    const missionId = document.getElementById('missionSelect').value;
+    if (missionId) {
+        selectMission(parseInt(missionId));
+    }
+}
+
+function showAllMissions() {
+    // Fit map to show all drone markers
+    if (Object.keys(droneMarkers).length > 0) {
+        const group = new L.featureGroup(Object.values(droneMarkers));
+        map.fitBounds(group.getBounds().pad(0.1));
+    }
+}
+
+function closeDroneStatus() {
+    document.getElementById('droneStatus').style.display = 'none';
+    selectedMission = null;
+    document.getElementById('missionSelect').value = '';
+}
+
+function getCurrentMissionData(missionId) {
+    // This would fetch current mission data - implement based on your API
+    return null;
+}
+
+function updateMissionTimeline(events) {
+    const timeline = document.getElementById('missionTimeline');
+    timeline.innerHTML = '';
+    
+    events.forEach(event => {
+        const timelineItem = document.createElement('div');
+        timelineItem.className = 'timeline-item';
+        timelineItem.innerHTML = `
+            <div class="timeline-marker bg-${event.type === 'success' ? 'success' : 'info'}"></div>
+            <div class="timeline-content">
+                <h6>${event.title}</h6>
+                <p class="text-muted">${event.description}</p>
+                <small class="text-muted">${event.timestamp}</small>
+            </div>
+        `;
+        timeline.appendChild(timelineItem);
+    });
+}
+</script>
+{% endblock %}
