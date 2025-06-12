@@ -10,14 +10,19 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h1 class="h3 mb-1">
-                        <i class="fas fa-tachometer-alt text-primary me-2"></i>
+                        <i class="fas fa-heartbeat text-primary me-2"></i>
                         Welcome, {{ current_user.first_name }}
                     </h1>
-                    <p class="text-muted mb-0">Manage your medical delivery requests</p>
+                    <p class="text-muted mb-0">Emergency Medical Drone Delivery Dashboard</p>
                 </div>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestDeliveryModal">
-                    <i class="fas fa-plus me-2"></i>Request Delivery
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-danger emergency-panic-btn" onclick="triggerEmergencyRequest()">
+                        <i class="fas fa-exclamation-triangle me-2"></i>EMERGENCY
+                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestDeliveryModal">
+                        <i class="fas fa-plus me-2"></i>Request Delivery
+                    </button>
+                </div>
             </div>
         </div>
     </div>
