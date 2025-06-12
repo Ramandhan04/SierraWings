@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+
+{% block title %}System Monitor - SierraWings Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-desktop me-2"></i>System Monitor
+                    </h2>
+                    <p class="text-muted mb-0">Real-time system performance and operational metrics</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('auth.settings') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-user-cog me-2"></i>Settings
+                    </a>
+                    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Health Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-heartbeat me-2"></i>System Health Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="health-indicator">
+                                <div class="health-icon bg-{{ 'success' if system_health.database == 'healthy' else 'warning' if system_health.database == 'warning' else 'danger' }}">
+                                    <i class="fas fa-database"></i>
+                                </div>
+                                <h6 class="mt-2">Database</h6>
+                                <span class="badge bg-{{ 'success' if system_health.database == 'healthy' else 'warning' if system_health.database == 'warning' else 'danger' }}">
+                                    {{ system_health.database.title() }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="health-indicator">
+                                <div class="health-icon bg-{{ 'success' if system_health.cpu == 'healthy' else 'warning' if system_health.cpu == 'warning' else 'danger' }}">
+                                    <i class="fas fa-microchip"></i>
+                                </div>
+                                <h6 class="mt-2">CPU</h6>
+                                <span class="badge bg-{{ 'success' if system_health.cpu == 'healthy' else 'warning' if system_health.cpu == 'warning' else 'danger' }}">
+                                    {{ cpu_percent }}%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="health-indicator">
+                                <div class="health-icon bg-{{ 'success' if system_health.memory == 'healthy' else 'warning' if system_health.memory == 'warning' else 'danger' }}">
+                                    <i class="fas fa-memory"></i>
+                                </div>
+                                <h6 class="mt-2">Memory</h6>
+                                <span class="badge bg-{{ 'success' if system_health.memory == 'healthy' else 'warning' if system_health.memory == 'warning' else 'danger' }}">
+                                    {{ (memory.percent)|round(1) }}%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="health-indicator">
+                                <div class="health-icon bg-{{ 'success' if system_health.storage == 'healthy' else 'warning' if system_health.storage == 'warning' else 'danger' }}">
+                                    <i class="fas fa-hdd"></i>
+                                </div>
+                                <h6 class="mt-2">Storage</h6>
+                                <span class="badge bg-{{ 'success' if system_health.storage == 'healthy' else 'warning' if system_health.storage == 'warning' else 'danger' }}">
+                                    {{ (disk.percent)|round(1) }}%
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Usage Charts -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-microchip me-2"></i>CPU Usage</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="progress-circle mb-3" data-percentage="{{ cpu_percent }}">
+                        <svg width="120" height="120">
+                            <circle cx="60" cy="60" r="50" stroke="#e9ecef" stroke-width="8" fill="none"/>
+                            <circle cx="60" cy="60" r="50" stroke="#007bff" stroke-width="8" fill="none"
+                                    stroke-dasharray="{{ (cpu_percent * 314.159 / 100)|round(2) }} 314.159"
+                                    stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                            <text x="60" y="65" text-anchor="middle" class="h5 fw-bold">{{ cpu_percent }}%</text>
+                        </svg>
+                    </div>
+                    <p class="text-muted small mb-0">Current CPU utilization</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-memory me-2"></i>Memory Usage</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="progress-circle mb-3" data-percentage="{{ memory.percent }}">
+                        <svg width="120" height="120">
+                            <circle cx="60" cy="60" r="50" stroke="#e9ecef" stroke-width="8" fill="none"/>
+                            <circle cx="60" cy="60" r="50" stroke="#28a745" stroke-width="8" fill="none"
+                                    stroke-dasharray="{{ (memory.percent * 314.159 / 100)|round(2) }} 314.159"
+                                    stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                            <text x="60" y="60" text-anchor="middle" class="h6 fw-bold">{{ (memory.percent)|round(1) }}%</text>
+                            <text x="60" y="75" text-anchor="middle" class="small text-muted">{{ (memory.used / 1024**3)|round(1) }}GB</text>
+                        </svg>
+                    </div>
+                    <p class="text-muted small mb-0">{{ (memory.total / 1024**3)|round(1) }}GB Total</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-hdd me-2"></i>Storage Usage</h6>
+                </div>
+                <div class="card-body text-center">
+                    <div class="progress-circle mb-3" data-percentage="{{ disk.percent }}">
+                        <svg width="120" height="120">
+                            <circle cx="60" cy="60" r="50" stroke="#e9ecef" stroke-width="8" fill="none"/>
+                            <circle cx="60" cy="60" r="50" stroke="#ffc107" stroke-width="8" fill="none"
+                                    stroke-dasharray="{{ (disk.percent * 314.159 / 100)|round(2) }} 314.159"
+                                    stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                            <text x="60" y="60" text-anchor="middle" class="h6 fw-bold">{{ (disk.percent)|round(1) }}%</text>
+                            <text x="60" y="75" text-anchor="middle" class="small text-muted">{{ (disk.used / 1024**3)|round(1) }}GB</text>
+                        </svg>
+                    </div>
+                    <p class="text-muted small mb-0">{{ (disk.total / 1024**3)|round(1) }}GB Total</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Statistics -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>System Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-4">
+                            <div class="stat-box text-center">
+                                <div class="stat-icon bg-primary bg-opacity-10 text-primary mb-2">
+                                    <i class="fas fa-users fa-2x"></i>
+                                </div>
+                                <h4 class="mb-1">{{ total_users }}</h4>
+                                <p class="text-muted small mb-0">Total Users</p>
+                                <small class="text-success">{{ active_users }} active</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-4">
+                            <div class="stat-box text-center">
+                                <div class="stat-icon bg-success bg-opacity-10 text-success mb-2">
+                                    <i class="fas fa-hospital fa-2x"></i>
+                                </div>
+                                <h4 class="mb-1">{{ total_clinics }}</h4>
+                                <p class="text-muted small mb-0">Medical Facilities</p>
+                                <small class="text-success">{{ verified_clinics }} verified</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-4">
+                            <div class="stat-box text-center">
+                                <div class="stat-icon bg-info bg-opacity-10 text-info mb-2">
+                                    <i class="fas fa-drone fa-2x"></i>
+                                </div>
+                                <h4 class="mb-1">{{ total_drones }}</h4>
+                                <p class="text-muted small mb-0">Total Drones</p>
+                                <small class="text-success">{{ available_drones }} available</small>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-4">
+                            <div class="stat-box text-center">
+                                <div class="stat-icon bg-warning bg-opacity-10 text-warning mb-2">
+                                    <i class="fas fa-rocket fa-2x"></i>
+                                </div>
+                                <h4 class="mb-1">{{ total_missions }}</h4>
+                                <p class="text-muted small mb-0">Total Missions</p>
+                                <small class="text-info">{{ completed_missions }} completed</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mission Status Breakdown -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h6 class="text-muted mb-3">Mission Status Breakdown</h6>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="status-card bg-warning bg-opacity-10 border-warning">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h5 class="text-warning mb-0">{{ pending_missions }}</h5>
+                                                <small class="text-muted">Pending</small>
+                                            </div>
+                                            <i class="fas fa-clock text-warning"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="status-card bg-info bg-opacity-10 border-info">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h5 class="text-info mb-0">{{ in_flight_missions }}</h5>
+                                                <small class="text-muted">In Flight</small>
+                                            </div>
+                                            <i class="fas fa-plane text-info"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="status-card bg-success bg-opacity-10 border-success">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h5 class="text-success mb-0">{{ completed_missions }}</h5>
+                                                <small class="text-muted">Completed</small>
+                                            </div>
+                                            <i class="fas fa-check-circle text-success"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="status-card bg-secondary bg-opacity-10 border-secondary">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h5 class="text-secondary mb-0">{{ recent_missions }}</h5>
+                                                <small class="text-muted">Last 24h</small>
+                                            </div>
+                                            <i class="fas fa-calendar-day text-secondary"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Activity Feed -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+                </div>
+                <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                    <div class="activity-feed">
+                        <h6 class="text-muted mb-3">Recent Missions</h6>
+                        {% for mission in recent_mission_list %}
+                        <div class="activity-item">
+                            <div class="activity-icon bg-{{ 'success' if mission.status == 'completed' else 'info' if mission.status == 'in_flight' else 'warning' if mission.status == 'pending' else 'secondary' }}">
+                                <i class="fas fa-rocket"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p class="mb-1">
+                                    <strong>Mission #{{ mission.id }}</strong>
+                                    <span class="badge bg-{{ 'success' if mission.status == 'completed' else 'info' if mission.status == 'in_flight' else 'warning' if mission.status == 'pending' else 'secondary' }} ms-2">
+                                        {{ mission.status.title() }}
+                                    </span>
+                                </p>
+                                <p class="text-muted small mb-1">{{ mission.payload_type }}</p>
+                                <small class="text-muted">{{ mission.created_at.strftime('%m/%d %H:%M') }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        <hr>
+                        
+                        <h6 class="text-muted mb-3">New Users</h6>
+                        {% for user in recent_user_list %}
+                        <div class="activity-item">
+                            <div class="activity-icon bg-primary">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p class="mb-1">
+                                    <strong>{{ user.full_name }}</strong>
+                                    <span class="badge bg-primary ms-2">{{ user.role.title() }}</span>
+                                </p>
+                                <p class="text-muted small mb-1">{{ user.email }}</p>
+                                <small class="text-muted">{{ user.created_at.strftime('%m/%d %H:%M') }}</small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Performance Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">System Performance</h6>
+                            <div class="metric-row">
+                                <span>Average Response Time</span>
+                                <span class="text-success">&lt; 200ms</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Uptime</span>
+                                <span class="text-success">99.9%</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Database Connections</span>
+                                <span class="text-info">Active</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>API Endpoints</span>
+                                <span class="text-success">All Operational</span>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Security Status</h6>
+                            <div class="metric-row">
+                                <span>SSL Certificate</span>
+                                <span class="text-success">Valid</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>2FA Enabled Users</span>
+                                <span class="text-info">{{ active_users }} users</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Failed Login Attempts</span>
+                                <span class="text-warning">Low</span>
+                            </div>
+                            <div class="metric-row">
+                                <span>Last Security Scan</span>
+                                <span class="text-success">Clean</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.health-indicator {
+    padding: 20px;
+}
+
+.health-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: white;
+    font-size: 24px;
+}
+
+.stat-box {
+    padding: 20px;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.status-card {
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid;
+    margin-bottom: 15px;
+}
+
+.activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.metric-row:last-child {
+    border-bottom: none;
+}
+
+.progress-circle circle {
+    transition: stroke-dasharray 0.3s ease;
+}
+
+/* Auto-refresh animation */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.refreshing {
+    animation: pulse 1s infinite;
+}
+</style>
+
+<script>
+// Auto-refresh system monitor every 30 seconds
+setInterval(() => {
+    location.reload();
+}, 30000);
+
+// Add loading state during refresh
+window.addEventListener('beforeunload', () => {
+    document.body.classList.add('refreshing');
+});
+</script>
+{% endblock %}

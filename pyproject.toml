@@ -16,4 +16,5 @@ dependencies = [
     "sendgrid>=6.12.4",
     "pyotp>=2.9.0",
     "qrcode>=8.2",
+    "psutil>=7.0.0",
 ]

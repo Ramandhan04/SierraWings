@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
-from models import User, Drone, Mission, TelemetryLog
+from models import User, Drone, Mission, TelemetryLog, ClinicProfile
 from app import db
 
 bp = Blueprint('admin', __name__)
@@ -285,8 +285,8 @@ def system_monitor():
     # Database metrics
     total_users = User.query.count()
     active_users = User.query.filter_by(is_active=True).count()
-    total_clinics = ClinicProfile.query.count() if 'ClinicProfile' in globals() else 0
-    verified_clinics = ClinicProfile.query.filter_by(is_verified=True).count() if 'ClinicProfile' in globals() else 0
+    total_clinics = ClinicProfile.query.count()
+    verified_clinics = ClinicProfile.query.filter_by(is_verified=True).count()
     total_drones = Drone.query.count()
     available_drones = Drone.query.filter_by(status='available').count()
     total_missions = Mission.query.count()

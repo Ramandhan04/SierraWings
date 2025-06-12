@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Two-Factor Authentication - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>Setup Two-Factor Authentication
+                    </h4>
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Enhanced Security:</strong> 2FA adds an extra layer of protection to your SierraWings account.
+                        </div>
+                    </div>
+
+                    <div class="setup-steps">
+                        <div class="step mb-4">
+                            <h5 class="text-primary">
+                                <span class="step-number">1</span>
+                                Install Authenticator App
+                            </h5>
+                            <p class="text-muted">Download and install an authenticator app on your mobile device:</p>
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <div class="app-option">
+                                        <i class="fab fa-google fa-2x text-primary mb-2"></i>
+                                        <p class="small">Google Authenticator</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="app-option">
+                                        <i class="fas fa-mobile-alt fa-2x text-success mb-2"></i>
+                                        <p class="small">Authy</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step mb-4">
+                            <h5 class="text-primary">
+                                <span class="step-number">2</span>
+                                Scan QR Code
+                            </h5>
+                            <p class="text-muted">Use your authenticator app to scan this QR code:</p>
+                            
+                            <div class="qr-code-container text-center mb-3">
+                                <div class="qr-code-wrapper">
+                                    <img src="data:image/png;base64,{{ qr_code }}" alt="2FA QR Code" class="qr-code">
+                                </div>
+                            </div>
+                            
+                            <div class="manual-entry">
+                                <h6 class="text-muted">Can't scan? Enter this code manually:</h6>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" value="{{ secret }}" readonly id="secretCode">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copySecret()">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <h5 class="text-primary">
+                                <span class="step-number">3</span>
+                                Verify Setup
+                            </h5>
+                            <p class="text-muted">Enter the 6-digit code from your authenticator app:</p>
+                            
+                            <form action="{{ url_for('auth.verify_2fa_setup') }}" method="POST" id="verifyForm">
+                                <div class="mb-3">
+                                    <input type="text" class="form-control form-control-lg text-center" 
+                                           name="token" id="token" placeholder="000000" maxlength="6" 
+                                           pattern="[0-9]{6}" required autocomplete="off">
+                                    <div class="form-text">Enter the 6-digit code without spaces</div>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="fas fa-check me-2"></i>Verify & Enable 2FA
+                                    </button>
+                                    <a href="{{ url_for('auth.settings') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-2"></i>Cancel Setup
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.setup-steps {
+    position: relative;
+}
+
+.step {
+    position: relative;
+    padding-left: 60px;
+}
+
+.step-number {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 40px;
+    height: 40px;
+    background: #007bff;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.qr-code-container {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 2px dashed #dee2e6;
+}
+
+.qr-code-wrapper {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.qr-code {
+    max-width: 200px;
+    height: auto;
+}
+
+.app-option {
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.manual-entry {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+#token {
+    font-family: 'Courier New', monospace;
+    font-size: 1.5rem;
+    letter-spacing: 0.2em;
+}
+</style>
+
+<script>
+function copySecret() {
+    const secretInput = document.getElementById('secretCode');
+    secretInput.select();
+    document.execCommand('copy');
+    
+    const button = event.target.closest('button');
+    const icon = button.querySelector('i');
+    icon.className = 'fas fa-check text-success';
+    
+    setTimeout(() => {
+        icon.className = 'fas fa-copy';
+    }, 2000);
+}
+
+document.getElementById('verifyForm').addEventListener('submit', function(e) {
+    const token = document.getElementById('token').value;
+    if (token.length !== 6 || !/^\d{6}$/.test(token)) {
+        e.preventDefault();
+        alert('Please enter a valid 6-digit code.');
+        return;
+    }
+    
+    const button = e.target.querySelector('button[type="submit"]');
+    addLoadingState(button);
+});
+
+// Auto-focus token input and format
+document.getElementById('token').addEventListener('input', function(e) {
+    this.value = this.value.replace(/\D/g, '');
+    if (this.value.length === 6) {
+        this.form.submit();
+    }
+});
+</script>
+{% endblock %}

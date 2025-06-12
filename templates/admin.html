@@ -16,6 +16,9 @@
                     <p class="text-muted mb-0">Monitor and manage the SierraWings platform</p>
                 </div>
                 <div>
+                    <a href="{{ url_for('auth.settings') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-user-cog me-2"></i>Settings
+                    </a>
                     <a href="{{ url_for('admin.system_monitor') }}" class="btn btn-info me-2">
                         <i class="fas fa-chart-line me-2"></i>System Monitor
                     </a>
