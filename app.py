@@ -41,6 +41,8 @@ from views.patient import bp as patient_bp
 from views.clinic import bp as clinic_bp
 from views.admin import bp as admin_bp
 from views.api import bp as api_bp
+from views.live_tracking import bp as live_tracking_bp
+from views.payment import bp as payment_bp
 import json
 
 # Register blueprints
@@ -49,6 +51,8 @@ app.register_blueprint(patient_bp, url_prefix='/patient')
 app.register_blueprint(clinic_bp, url_prefix='/clinic')
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(api_bp, url_prefix='/api')
+app.register_blueprint(live_tracking_bp)
+app.register_blueprint(payment_bp)
 
 # Add template filter for JSON parsing
 @app.template_filter('from_json')
