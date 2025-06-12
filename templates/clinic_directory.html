@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Medical Facilities Directory - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-hospital me-2"></i>Medical Facilities Directory
+                    </h2>
+                    <p class="text-muted mb-0">Find verified medical facilities in the SierraWings network</p>
+                </div>
+                <a href="{{ url_for('patient.dashboard') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search and Filter -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="city" class="form-label">City</label>
+                            <input type="text" class="form-control" id="city" name="city" 
+                                   value="{{ request.args.get('city', '') }}" placeholder="Enter city">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="state" class="form-label">State</label>
+                            <select class="form-select" id="state" name="state">
+                                <option value="">All States</option>
+                                <option value="CA" {{ 'selected' if request.args.get('state') == 'CA' else '' }}>California</option>
+                                <option value="NY" {{ 'selected' if request.args.get('state') == 'NY' else '' }}>New York</option>
+                                <option value="TX" {{ 'selected' if request.args.get('state') == 'TX' else '' }}>Texas</option>
+                                <option value="FL" {{ 'selected' if request.args.get('state') == 'FL' else '' }}>Florida</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="specialty" class="form-label">Specialty</label>
+                            <select class="form-select" id="specialty" name="specialty">
+                                <option value="">All Specialties</option>
+                                <option value="Emergency Medicine" {{ 'selected' if request.args.get('specialty') == 'Emergency Medicine' else '' }}>Emergency Medicine</option>
+                                <option value="Cardiology" {{ 'selected' if request.args.get('specialty') == 'Cardiology' else '' }}>Cardiology</option>
+                                <option value="Trauma Surgery" {{ 'selected' if request.args.get('specialty') == 'Trauma Surgery' else '' }}>Trauma Surgery</option>
+                                <option value="Blood Bank" {{ 'selected' if request.args.get('specialty') == 'Blood Bank' else '' }}>Blood Bank</option>
+                                <option value="Organ Transplant" {{ 'selected' if request.args.get('specialty') == 'Organ Transplant' else '' }}>Organ Transplant</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-2"></i>Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results -->
+    <div class="row">
+        {% if clinics %}
+            {% for clinic in clinics %}
+            <div class="col-lg-6 col-xl-4 mb-4">
+                <div class="card h-100 border-0 shadow-sm clinic-card">
+                    <div class="card-header bg-light border-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h5 class="card-title mb-0 text-primary">{{ clinic.clinic_name }}</h5>
+                            {% if clinic.is_verified %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>Verified
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                {{ clinic.full_address }}
+                            </small>
+                        </div>
+                        
+                        {% if clinic.description %}
+                        <p class="card-text text-muted small">{{ clinic.description[:120] }}...</p>
+                        {% endif %}
+                        
+                        <!-- Specialties -->
+                        {% if clinic.specialties %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-1">Specialties:</small>
+                            {% for specialty in clinic.specialties|from_json|slice(3) %}
+                                <span class="badge bg-primary bg-opacity-10 text-primary me-1 mb-1">{{ specialty }}</span>
+                            {% endfor %}
+                            {% if clinic.specialties|from_json|length > 3 %}
+                                <span class="badge bg-secondary">+{{ clinic.specialties|from_json|length - 3 }} more</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Service Radius -->
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-circle-dot me-1"></i>
+                                Service Radius: {{ clinic.service_radius }} km
+                            </small>
+                        </div>
+                        
+                        <!-- Emergency Services -->
+                        {% if clinic.operating_hours %}
+                            {% set hours = clinic.operating_hours|from_json %}
+                            {% if hours.emergency_24_7 %}
+                            <div class="mb-2">
+                                <small class="text-success">
+                                    <i class="fas fa-clock me-1"></i>
+                                    24/7 Emergency Services
+                                </small>
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                        
+                        <!-- Emergency Contact -->
+                        {% if clinic.emergency_contact %}
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-phone me-1"></i>
+                                Emergency: {{ clinic.emergency_contact }}
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="card-footer bg-transparent border-0">
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('patient.clinic_details', clinic_id=clinic.id) }}" 
+                               class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-info-circle me-1"></i>View Details
+                            </a>
+                            {% if clinic.website %}
+                                <a href="{{ clinic.website }}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-external-link-alt me-1"></i>Website
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <div class="text-muted mb-3">
+                            <i class="fas fa-search fa-3x"></i>
+                        </div>
+                        <h5 class="text-muted">No Medical Facilities Found</h5>
+                        <p class="text-muted">Try adjusting your search criteria or browse all facilities.</p>
+                        <a href="{{ url_for('patient.clinics') }}" class="btn btn-primary">
+                            <i class="fas fa-redo me-2"></i>View All Facilities
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.clinic-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.clinic-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+</style>
+{% endblock %}

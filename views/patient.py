@@ -124,3 +124,40 @@ def cancel_mission(mission_id):
         flash('An error occurred while cancelling the mission.', 'error')
     
     return redirect(url_for('patient.dashboard'))
+
+@bp.route('/clinics')
+@login_required
+@patient_required
+def clinics():
+    # Get all active and verified clinics
+    clinics = ClinicProfile.query.filter_by(is_active=True, is_verified=True).all()
+    
+    # Filter by location if provided
+    city = request.args.get('city')
+    state = request.args.get('state')
+    specialty = request.args.get('specialty')
+    
+    if city:
+        clinics = [c for c in clinics if c.city.lower() == city.lower()]
+    if state:
+        clinics = [c for c in clinics if c.state.lower() == state.lower()]
+    if specialty:
+        clinics = [c for c in clinics if specialty.lower() in (json.loads(c.specialties or '[]'))]
+    
+    return render_template('clinic_directory.html', clinics=clinics)
+
+@bp.route('/clinic/<int:clinic_id>')
+@login_required
+@patient_required
+def clinic_details(clinic_id):
+    clinic = ClinicProfile.query.get_or_404(clinic_id)
+    
+    # Get clinic's recent mission statistics
+    clinic_missions = Mission.query.join(User).filter(User.id == clinic.user_id).all()
+    total_missions = len(clinic_missions)
+    completed_missions = len([m for m in clinic_missions if m.status == 'completed'])
+    
+    return render_template('clinic_details.html', 
+                         clinic=clinic,
+                         total_missions=total_missions,
+                         completed_missions=completed_missions)
