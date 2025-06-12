@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-page py-5">
+                <div class="error-icon mb-4">
+                    <i class="fas fa-exclamation-triangle fa-5x text-danger"></i>
+                </div>
+                <h1 class="display-4 text-danger">500</h1>
+                <h3 class="mb-3">Internal Server Error</h3>
+                <p class="text-muted mb-4">Something went wrong on our end. Please try again later.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>Return Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

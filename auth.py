@@ -1,7 +1,13 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from email_validator import validate_email, EmailNotValidError
+import pyotp
+import qrcode
+import io
+import base64
+import json
+import secrets
 from models import User
 from app import db
 from email_service import send_welcome_email
@@ -119,6 +125,171 @@ def register():
     
     return render_template('register.html')
 
+@bp.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html')
+
+@bp.route('/profile/edit', methods=['GET', 'POST'])
+@login_required
+def edit_profile():
+    if request.method == 'POST':
+        try:
+            # Validate email
+            email = request.form.get('email', '').strip().lower()
+            
+            try:
+                validate_email(email)
+            except EmailNotValidError:
+                flash('Please enter a valid email address.', 'error')
+                return render_template('edit_profile.html')
+            
+            # Check if email is already taken by another user
+            existing_user = User.query.filter(User.email == email, User.id != current_user.id).first()
+            if existing_user:
+                flash('This email is already in use by another account.', 'error')
+                return render_template('edit_profile.html')
+            
+            # Update user information
+            current_user.email = email
+            current_user.first_name = request.form.get('first_name', '').strip()
+            current_user.last_name = request.form.get('last_name', '').strip()
+            current_user.phone = request.form.get('phone', '').strip() or None
+            current_user.address = request.form.get('address', '').strip() or None
+            
+            # Change password if provided
+            current_password = request.form.get('current_password')
+            new_password = request.form.get('new_password')
+            confirm_password = request.form.get('confirm_password')
+            
+            if new_password:
+                if not current_password:
+                    flash('Current password is required to change password.', 'error')
+                    return render_template('edit_profile.html')
+                
+                if not check_password_hash(current_user.password_hash, current_password):
+                    flash('Current password is incorrect.', 'error')
+                    return render_template('edit_profile.html')
+                
+                if new_password != confirm_password:
+                    flash('New passwords do not match.', 'error')
+                    return render_template('edit_profile.html')
+                
+                if len(new_password) < 6:
+                    flash('Password must be at least 6 characters long.', 'error')
+                    return render_template('edit_profile.html')
+                
+                current_user.password_hash = generate_password_hash(new_password)
+            
+            db.session.commit()
+            flash('Profile updated successfully!', 'success')
+            return redirect(url_for('auth.settings'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash('An error occurred while updating your profile.', 'error')
+    
+    return render_template('edit_profile.html')
+
+@bp.route('/profile/2fa')
+@login_required
+def two_factor_setup():
+    if current_user.two_factor_enabled:
+        return render_template('2fa_manage.html')
+    
+    # Generate new secret for setup
+    secret = pyotp.random_base32()
+    session['temp_2fa_secret'] = secret
+    
+    # Generate QR code
+    totp = pyotp.TOTP(secret)
+    qr_url = totp.provisioning_uri(
+        current_user.email,
+        issuer_name="SierraWings Emergency Medical"
+    )
+    
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(qr_url)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    img_buffer = io.BytesIO()
+    img.save(img_buffer, format='PNG')
+    img_buffer.seek(0)
+    
+    qr_code_data = base64.b64encode(img_buffer.getvalue()).decode()
+    
+    return render_template('2fa_setup.html', 
+                         secret=secret, 
+                         qr_code=qr_code_data)
+
+@bp.route('/profile/2fa/verify', methods=['POST'])
+@login_required
+def verify_2fa_setup():
+    temp_secret = session.get('temp_2fa_secret')
+    if not temp_secret:
+        flash('2FA setup session expired. Please try again.', 'error')
+        return redirect(url_for('auth.two_factor_setup'))
+    
+    token = request.form.get('token')
+    if not token:
+        flash('Please enter the verification code.', 'error')
+        return redirect(url_for('auth.two_factor_setup'))
+    
+    totp = pyotp.TOTP(temp_secret)
+    if totp.verify(token):
+        # Generate backup codes
+        backup_codes = [secrets.token_hex(4).upper() for _ in range(10)]
+        
+        # Save 2FA settings
+        current_user.two_factor_enabled = True
+        current_user.two_factor_secret = temp_secret
+        current_user.backup_codes = json.dumps(backup_codes)
+        
+        db.session.commit()
+        session.pop('temp_2fa_secret', None)
+        
+        flash('Two-factor authentication enabled successfully!', 'success')
+        return render_template('2fa_backup_codes.html', backup_codes=backup_codes)
+    else:
+        flash('Invalid verification code. Please try again.', 'error')
+        return redirect(url_for('auth.two_factor_setup'))
+
+@bp.route('/profile/2fa/disable', methods=['POST'])
+@login_required
+def disable_2fa():
+    token = request.form.get('token')
+    password = request.form.get('password')
+    
+    if not check_password_hash(current_user.password_hash, password):
+        flash('Incorrect password.', 'error')
+        return redirect(url_for('auth.two_factor_setup'))
+    
+    # Verify 2FA token or backup code
+    is_valid = False
+    if current_user.two_factor_secret:
+        totp = pyotp.TOTP(current_user.two_factor_secret)
+        if totp.verify(token):
+            is_valid = True
+        else:
+            # Check backup codes
+            backup_codes = json.loads(current_user.backup_codes or '[]')
+            if token.upper() in backup_codes:
+                backup_codes.remove(token.upper())
+                current_user.backup_codes = json.dumps(backup_codes)
+                is_valid = True
+    
+    if is_valid:
+        current_user.two_factor_enabled = False
+        current_user.two_factor_secret = None
+        current_user.backup_codes = None
+        db.session.commit()
+        flash('Two-factor authentication disabled.', 'success')
+    else:
+        flash('Invalid verification code.', 'error')
+    
+    return redirect(url_for('auth.profile'))
+
 @bp.route('/logout')
 @login_required
 def logout():
@@ -126,9 +297,9 @@ def logout():
     flash('You have been logged out.', 'info')
     return redirect(url_for('auth.login'))
 
-@bp.route('/profile')
+@bp.route('/settings')
 @login_required
-def profile():
+def settings():
     return render_template('profile.html', user=current_user)
 
 @bp.route('/forgot-password')

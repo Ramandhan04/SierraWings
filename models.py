@@ -14,6 +14,11 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     
+    # 2FA fields
+    two_factor_enabled = db.Column(db.Boolean, default=False)
+    two_factor_secret = db.Column(db.String(32))  # TOTP secret
+    backup_codes = db.Column(db.Text)  # JSON array of backup codes
+    
     # Relationships
     missions = db.relationship('Mission', backref='user', lazy=True)
     
