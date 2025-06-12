@@ -42,67 +42,7 @@ def get_telemetry():
         
         return jsonify(telemetry_data)
 
-@bp.route('/telemetry/simulate/<int:mission_id>', methods=['POST'])
-@login_required
-def simulate_telemetry(mission_id):
-    """Generate simulated telemetry data for testing"""
-    if current_user.role not in ['clinic', 'admin']:
-        return jsonify({'error': 'Access denied'}), 403
-    
-    mission = Mission.query.get(mission_id)
-    if not mission or mission.status != 'in_flight':
-        return jsonify({'error': 'Mission not found or not in flight'}), 404
-    
-    try:
-        # Generate simulated telemetry data
-        # Starting point (pickup location)
-        start_lat = 37.7749 + random.uniform(-0.1, 0.1)  # San Francisco area
-        start_lon = -122.4194 + random.uniform(-0.1, 0.1)
-        
-        # Destination (delivery location)
-        end_lat = start_lat + random.uniform(-0.05, 0.05)
-        end_lon = start_lon + random.uniform(-0.05, 0.05)
-        
-        # Get existing telemetry count to determine current position
-        existing_count = TelemetryLog.query.filter_by(mission_id=mission_id).count()
-        
-        # Calculate progress (0 to 1)
-        total_waypoints = 50  # Total points in the flight path
-        progress = min(existing_count / total_waypoints, 1.0)
-        
-        # Interpolate current position
-        current_lat = start_lat + (end_lat - start_lat) * progress
-        current_lon = start_lon + (end_lon - start_lon) * progress
-        
-        # Add some realistic variation
-        current_lat += random.uniform(-0.001, 0.001)
-        current_lon += random.uniform(-0.001, 0.001)
-        
-        # Generate telemetry entry
-        telemetry = TelemetryLog(
-            mission_id=mission_id,
-            latitude=current_lat,
-            longitude=current_lon,
-            altitude=random.uniform(50, 150),  # 50-150 meters
-            heading=random.uniform(0, 360),
-            speed=random.uniform(10, 25),  # 10-25 m/s
-            battery_level=max(20, 100 - (progress * 70)),  # Battery drains during flight
-            signal_strength=random.randint(75, 100),
-            flight_mode='auto',
-            temperature=random.uniform(15, 25),
-            wind_speed=random.uniform(0, 8),
-            wind_direction=random.uniform(0, 360),
-            timestamp=datetime.utcnow()
-        )
-        
-        db.session.add(telemetry)
-        db.session.commit()
-        
-        return jsonify(telemetry.to_dict())
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to generate telemetry data'}), 500
+# Production system - telemetry comes from authentic drone hardware only
 
 @bp.route('/missions/<int:mission_id>/accept', methods=['POST'])
 @login_required
