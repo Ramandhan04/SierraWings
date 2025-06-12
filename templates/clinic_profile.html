@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Clinic Profile - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-user-md me-2"></i>{{ clinic_profile.clinic_name }}
+                    </h2>
+                    <p class="text-muted mb-0">Medical Facility Profile</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('clinic.edit_profile') }}" class="btn btn-primary">
+                        <i class="fas fa-edit me-2"></i>Edit Profile
+                    </a>
+                    <a href="{{ url_for('clinic.dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Profile Information -->
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Facility Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Facility Name</label>
+                            <p class="mb-0 fw-bold">{{ clinic_profile.clinic_name }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">License Number</label>
+                            <p class="mb-0">{{ clinic_profile.license_number }}</p>
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="text-muted small">Description</label>
+                            <p class="mb-0">{{ clinic_profile.description or 'No description provided' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Information -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Location & Service Area</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="text-muted small">Address</label>
+                            <p class="mb-0">{{ clinic_profile.full_address }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Service Radius</label>
+                            <p class="mb-0">{{ clinic_profile.service_radius }} km</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Emergency Contact</label>
+                            <p class="mb-0">{{ clinic_profile.emergency_contact or 'Not provided' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operating Hours -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Operating Hours</h5>
+                </div>
+                <div class="card-body">
+                    {% if clinic_profile.operating_hours %}
+                        {% set hours = clinic_profile.operating_hours|from_json %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-2"><strong>Monday:</strong> {{ hours.monday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Tuesday:</strong> {{ hours.tuesday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Wednesday:</strong> {{ hours.wednesday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Thursday:</strong> {{ hours.thursday or 'Closed' }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2"><strong>Friday:</strong> {{ hours.friday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Saturday:</strong> {{ hours.saturday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Sunday:</strong> {{ hours.sunday or 'Closed' }}</div>
+                                {% if hours.emergency_24_7 %}
+                                    <div class="mb-2 text-success"><strong><i class="fas fa-check-circle me-1"></i>24/7 Emergency Services</strong></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No operating hours specified</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Status Card -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-shield-alt me-2"></i>Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        {% if clinic_profile.is_verified %}
+                            <span class="badge bg-success fs-6">
+                                <i class="fas fa-check-circle me-1"></i>Verified
+                            </span>
+                        {% else %}
+                            <span class="badge bg-warning fs-6">
+                                <i class="fas fa-clock me-1"></i>Pending Verification
+                            </span>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        {% if clinic_profile.is_active %}
+                            <span class="badge bg-success fs-6">
+                                <i class="fas fa-play me-1"></i>Active
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger fs-6">
+                                <i class="fas fa-pause me-1"></i>Inactive
+                            </span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">
+                        Registered: {{ clinic_profile.created_at.strftime('%B %d, %Y') }}
+                    </small>
+                </div>
+            </div>
+
+            <!-- Specialties -->
+            {% if clinic_profile.specialties %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-stethoscope me-2"></i>Medical Specialties</h5>
+                </div>
+                <div class="card-body">
+                    {% for specialty in clinic_profile.specialties|from_json %}
+                        <span class="badge bg-primary bg-opacity-10 text-primary me-2 mb-2">{{ specialty }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Website Link -->
+            {% if clinic_profile.website %}
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <a href="{{ clinic_profile.website }}" target="_blank" class="btn btn-outline-primary">
+                        <i class="fas fa-external-link-alt me-2"></i>Visit Website
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

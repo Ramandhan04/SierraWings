@@ -16,6 +16,9 @@
                     <p class="text-muted mb-0">Emergency Medical Drone Delivery Dashboard</p>
                 </div>
                 <div class="d-flex gap-2">
+                    <a href="{{ url_for('patient.clinics') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-hospital me-2"></i>Find Medical Facilities
+                    </a>
                     <button class="btn btn-danger emergency-panic-btn" onclick="triggerEmergencyRequest()">
                         <i class="fas fa-exclamation-triangle me-2"></i>EMERGENCY
                     </button>

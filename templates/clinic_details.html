@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}{{ clinic.clinic_name }} - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-hospital me-2"></i>{{ clinic.clinic_name }}
+                        {% if clinic.is_verified %}
+                            <span class="badge bg-success ms-2">
+                                <i class="fas fa-check-circle me-1"></i>Verified
+                            </span>
+                        {% endif %}
+                    </h2>
+                    <p class="text-muted mb-0">Medical Facility Details</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('patient.clinics') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Directory
+                    </a>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestDeliveryModal">
+                        <i class="fas fa-plus me-2"></i>Request Delivery
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Facility Overview -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Facility Overview</h5>
+                </div>
+                <div class="card-body">
+                    {% if clinic.description %}
+                        <p class="mb-3">{{ clinic.description }}</p>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">License Number</label>
+                            <p class="mb-0 fw-bold">{{ clinic.license_number }}</p>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="text-muted small">Service Radius</label>
+                            <p class="mb-0">{{ clinic.service_radius }} kilometers</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Statistics -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Performance Metrics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <div class="metric-box">
+                                <h3 class="text-primary">{{ total_missions }}</h3>
+                                <p class="text-muted small mb-0">Total Missions</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="metric-box">
+                                <h3 class="text-success">{{ completed_missions }}</h3>
+                                <p class="text-muted small mb-0">Completed</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="metric-box">
+                                <h3 class="text-info">
+                                    {% if total_missions > 0 %}
+                                        {{ ((completed_missions / total_missions) * 100)|round|int }}%
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </h3>
+                                <p class="text-muted small mb-0">Success Rate</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operating Hours -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Operating Hours</h5>
+                </div>
+                <div class="card-body">
+                    {% if clinic.operating_hours %}
+                        {% set hours = clinic.operating_hours|from_json %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-2"><strong>Monday:</strong> {{ hours.monday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Tuesday:</strong> {{ hours.tuesday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Wednesday:</strong> {{ hours.wednesday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Thursday:</strong> {{ hours.thursday or 'Closed' }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-2"><strong>Friday:</strong> {{ hours.friday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Saturday:</strong> {{ hours.saturday or 'Closed' }}</div>
+                                <div class="mb-2"><strong>Sunday:</strong> {{ hours.sunday or 'Closed' }}</div>
+                                {% if hours.emergency_24_7 %}
+                                    <div class="alert alert-success mt-3 mb-0">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        <strong>24/7 Emergency Services Available</strong>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">Operating hours not specified</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Location & Contact -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Location & Contact</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small">Address</label>
+                        <p class="mb-0">{{ clinic.full_address }}</p>
+                    </div>
+                    
+                    {% if clinic.emergency_contact %}
+                    <div class="mb-3">
+                        <label class="text-muted small">Emergency Contact</label>
+                        <p class="mb-0">
+                            <a href="tel:{{ clinic.emergency_contact }}" class="text-decoration-none">
+                                <i class="fas fa-phone me-1"></i>{{ clinic.emergency_contact }}
+                            </a>
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    {% if clinic.website %}
+                    <div class="mb-3">
+                        <a href="{{ clinic.website }}" target="_blank" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-external-link-alt me-2"></i>Visit Website
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Medical Specialties -->
+            {% if clinic.specialties %}
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-stethoscope me-2"></i>Medical Specialties</h5>
+                </div>
+                <div class="card-body">
+                    {% for specialty in clinic.specialties|from_json %}
+                        <span class="badge bg-primary bg-opacity-10 text-primary me-2 mb-2 fs-6">{{ specialty }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-danger w-100 mb-2 emergency-panic-btn" onclick="triggerEmergencyRequest()">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Emergency Request
+                    </button>
+                    <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#requestDeliveryModal">
+                        <i class="fas fa-plus me-2"></i>Standard Delivery
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.metric-box {
+    padding: 15px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    margin-bottom: 15px;
+}
+
+.metric-box h3 {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+</style>
+{% endblock %}

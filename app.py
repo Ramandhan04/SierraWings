@@ -35,12 +35,13 @@ login_manager.login_view = 'auth.login'
 login_manager.login_message = 'Please log in to access this page.'
 
 # Import models and views
-from models import User, Drone, Mission, TelemetryLog
+from models import User, Drone, Mission, TelemetryLog, ClinicProfile
 import auth
 from views.patient import bp as patient_bp
 from views.clinic import bp as clinic_bp
 from views.admin import bp as admin_bp
 from views.api import bp as api_bp
+import json
 
 # Register blueprints
 app.register_blueprint(auth.bp)
@@ -48,6 +49,16 @@ app.register_blueprint(patient_bp, url_prefix='/patient')
 app.register_blueprint(clinic_bp, url_prefix='/clinic')
 app.register_blueprint(admin_bp, url_prefix='/admin')
 app.register_blueprint(api_bp, url_prefix='/api')
+
+# Add template filter for JSON parsing
+@app.template_filter('from_json')
+def from_json_filter(value):
+    if value:
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return []
+    return []
 
 @login_manager.user_loader
 def load_user(user_id):
