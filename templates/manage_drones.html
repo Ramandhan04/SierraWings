@@ -325,6 +325,16 @@ function viewDroneDetails(droneId) {
         });
 }
 
+function getStatusColor(status) {
+    const colors = {
+        'available': 'success',
+        'in_flight': 'primary',
+        'maintenance': 'warning',
+        'offline': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
 // Form validation
 (function() {
     'use strict';

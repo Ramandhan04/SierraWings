@@ -378,6 +378,31 @@ function viewMissionDetails(missionId) {
         });
 }
 
+function getStatusColor(status) {
+    const colors = {
+        'pending': 'secondary',
+        'accepted': 'info', 
+        'in_flight': 'primary',
+        'completed': 'success',
+        'cancelled': 'danger',
+        'rejected': 'danger',
+        'available': 'success',
+        'maintenance': 'warning',
+        'offline': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function getPriorityColor(priority) {
+    const colors = {
+        'low': 'info',
+        'normal': 'primary',
+        'high': 'warning',
+        'emergency': 'danger'
+    };
+    return colors[priority] || 'primary';
+}
+
 // Update live durations every minute
 setInterval(function() {
     const inProgressElements = document.querySelectorAll('[id^="live-duration-"]');

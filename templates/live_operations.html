@@ -293,35 +293,67 @@ function viewMissionDetails(missionId) {
     `;
     modal.show();
     
-    // Simulate loading detailed information
-    setTimeout(() => {
-        document.getElementById('liveOperationDetailsContent').innerHTML = `
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>Mission Information</h6>
-                    <p><strong>Mission ID:</strong> #${missionId}</p>
-                    <p><strong>Status:</strong> <span class="badge bg-primary">In Flight</span></p>
-                    <p><strong>Priority:</strong> <span class="badge bg-warning">High</span></p>
-                    <p><strong>Started:</strong> ${new Date().toLocaleTimeString()}</p>
+    // Fetch actual mission details from database
+    fetch(`/api/mission/${missionId}`)
+        .then(response => response.json())
+        .then(mission => {
+            document.getElementById('liveOperationDetailsContent').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Mission Information</h6>
+                        <p><strong>Mission ID:</strong> #${mission.id}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(mission.status)}">${mission.status}</span></p>
+                        <p><strong>Priority:</strong> <span class="badge bg-${getPriorityColor(mission.priority)}">${mission.priority}</span></p>
+                        ${mission.started_at ? `<p><strong>Started:</strong> ${new Date(mission.started_at).toLocaleTimeString()}</p>` : ''}
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Current Telemetry</h6>
+                        <p><strong>Battery:</strong> <span class="battery-level" data-mission-id="${missionId}">--</span>%</p>
+                        <p><strong>Speed:</strong> <span class="speed-level" data-mission-id="${missionId}">--</span> m/s</p>
+                        <p><strong>Altitude:</strong> <span class="altitude-level" data-mission-id="${missionId}">--</span> m</p>
+                        <p><strong>Signal:</strong> <span class="signal-level" data-mission-id="${missionId}">--</span>%</p>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <h6>Current Telemetry</h6>
-                    <p><strong>Battery:</strong> <span class="battery-level" data-mission-id="${missionId}">--</span>%</p>
-                    <p><strong>Speed:</strong> <span class="speed-level" data-mission-id="${missionId}">--</span> m/s</p>
-                    <p><strong>Altitude:</strong> <span class="altitude-level" data-mission-id="${missionId}">--</span> m</p>
-                    <p><strong>Signal:</strong> <span class="signal-level" data-mission-id="${missionId}">--</span>%</p>
+                <hr>
+                <h6>Route Information</h6>
+                <p><strong>Pickup:</strong> ${mission.pickup_address}</p>
+                <p><strong>Delivery:</strong> ${mission.delivery_address}</p>
+                ${mission.special_instructions ? `<p><strong>Instructions:</strong> ${mission.special_instructions}</p>` : ''}
+            `;
+            
+            // Update telemetry in modal
+            loadMissionTelemetry(missionId);
+        })
+        .catch(error => {
+            document.getElementById('liveOperationDetailsContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error loading mission details. Please try again.
                 </div>
-            </div>
-            <hr>
-            <h6>Route Information</h6>
-            <p><strong>Pickup:</strong> City Hospital Medical Center</p>
-            <p><strong>Delivery:</strong> Patient Residence</p>
-            <p><strong>Estimated Time:</strong> 15 minutes remaining</p>
-        `;
-        
-        // Update telemetry in modal
-        loadMissionTelemetry(missionId);
-    }, 1000);
+            `;
+        });
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': 'secondary',
+        'accepted': 'info',
+        'in_flight': 'primary', 
+        'completed': 'success',
+        'cancelled': 'danger',
+        'rejected': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function getPriorityColor(priority) {
+    const colors = {
+        'low': 'info',
+        'normal': 'primary',
+        'high': 'warning',
+        'emergency': 'danger'
+    };
+    return colors[priority] || 'primary';
 }
 
 function refreshOperations() {
