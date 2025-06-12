@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}Select Payment Method - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h3 class="mb-0">
+                        <i class="fas fa-credit-card me-2"></i>Choose Payment Method
+                    </h3>
+                    <p class="mb-0">Secure payment for Mission #{{ mission_id }}</p>
+                </div>
+                
+                <div class="card-body p-5">
+                    <!-- Amount Summary -->
+                    <div class="amount-summary bg-light p-4 rounded mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h5 class="mb-1">Emergency Medical Delivery</h5>
+                                <p class="text-muted mb-0">{{ payload_type }} - Priority: {{ priority.title() }}</p>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <h4 class="text-primary mb-0">Le {{ "{:,.2f}".format(amount) }}</h4>
+                                <small class="text-muted">Total Amount</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Methods Grid -->
+                    <div class="payment-methods-grid">
+                        <h5 class="mb-4">Select Your Payment Method</h5>
+                        
+                        <div class="row g-4">
+                            <!-- Afri Money -->
+                            <div class="col-md-6">
+                                <div class="payment-option" onclick="selectPaymentMethod('africanmoney')">
+                                    <div class="payment-card h-100">
+                                        <div class="payment-icon bg-success">
+                                            <i class="fas fa-mobile-alt"></i>
+                                        </div>
+                                        <h6 class="mt-3 mb-2">Afri Money</h6>
+                                        <p class="text-muted small mb-3">Pay with your Afri Money mobile wallet</p>
+                                        <div class="payment-features">
+                                            <small class="text-success">
+                                                <i class="fas fa-check me-1"></i>Instant payment
+                                            </small><br>
+                                            <small class="text-success">
+                                                <i class="fas fa-check me-1"></i>No transaction fees
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Orange Money -->
+                            <div class="col-md-6">
+                                <div class="payment-option" onclick="selectPaymentMethod('orangemoney')">
+                                    <div class="payment-card h-100">
+                                        <div class="payment-icon bg-warning">
+                                            <i class="fas fa-mobile-alt"></i>
+                                        </div>
+                                        <h6 class="mt-3 mb-2">Orange Money</h6>
+                                        <p class="text-muted small mb-3">Pay with your Orange Money account</p>
+                                        <div class="payment-features">
+                                            <small class="text-success">
+                                                <i class="fas fa-check me-1"></i>Quick & secure
+                                            </small><br>
+                                            <small class="text-success">
+                                                <i class="fas fa-check me-1"></i>Wide coverage
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Q-Money -->
+                            <div class="col-md-6">
+                                <div class="payment-option" onclick="selectPaymentMethod('qmoney')">
+                                    <div class="payment-card h-100">
+                                        <div class="payment-icon bg-info">
+                                            <i class="fas fa-mobile-alt"></i>
+                                        </div>
+                                        <h6 class="mt-3 mb-2">Q-Money</h6>
+                                        <p class="text-muted small mb-3">Pay with your Q-Money digital wallet</p>
+                                        <div class="payment-features">
+                                            <small class="text-success">
+                                                <i class="fas fa-check me-1"></i>Digital wallet
+                                            </small><br>
+                                            <small class="text-success">
+                                                <i class="fas fa-check me-1"></i>Real-time processing
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bank Card -->
+                            <div class="col-md-6">
+                                <div class="payment-option" onclick="selectPaymentMethod('card')">
+                                    <div class="payment-card h-100">
+                                        <div class="payment-icon bg-dark">
+                                            <i class="fas fa-credit-card"></i>
+                                        </div>
+                                        <h6 class="mt-3 mb-2">Bank Card</h6>
+                                        <p class="text-muted small mb-3">Visa, Mastercard, or local bank cards</p>
+                                        <div class="payment-features">
+                                            <small class="text-success">
+                                                <i class="fas fa-check me-1"></i>International cards
+                                            </small><br>
+                                            <small class="text-success">
+                                                <i class="fas fa-check me-1"></i>Bank-level security
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security Information -->
+                    <div class="security-info mt-5">
+                        <div class="row text-center">
+                            <div class="col-md-4">
+                                <div class="security-badge">
+                                    <i class="fas fa-lock fa-2x text-primary mb-2"></i>
+                                    <h6>256-bit SSL</h6>
+                                    <small class="text-muted">Bank-level encryption</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="security-badge">
+                                    <i class="fas fa-shield-alt fa-2x text-success mb-2"></i>
+                                    <h6>PCI Compliant</h6>
+                                    <small class="text-muted">Industry standards</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="security-badge">
+                                    <i class="fas fa-user-shield fa-2x text-info mb-2"></i>
+                                    <h6>Privacy Protected</h6>
+                                    <small class="text-muted">Data never stored</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{{ url_for('patient.request_delivery') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Delivery Request
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.payment-option {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.payment-option:hover {
+    transform: translateY(-5px);
+}
+
+.payment-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 30px 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.payment-option:hover .payment-card {
+    border-color: #007bff;
+    box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
+}
+
+.payment-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: white;
+    font-size: 24px;
+}
+
+.payment-features {
+    border-top: 1px solid #f1f3f4;
+    padding-top: 15px;
+    text-align: left;
+}
+
+.security-badge {
+    padding: 20px;
+}
+
+.amount-summary {
+    border-left: 4px solid #007bff;
+}
+</style>
+
+<script>
+function selectPaymentMethod(method) {
+    // Redirect to payment gateway with selected method
+    window.location.href = `/payment/gateway?mission_id={{ mission_id }}&method=${method}&amount={{ amount }}`;
+}
+
+// Add visual feedback for selection
+document.querySelectorAll('.payment-option').forEach(option => {
+    option.addEventListener('click', function() {
+        // Add selection animation
+        this.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            this.style.transform = 'translateY(-5px)';
+        }, 100);
+    });
+});
+</script>
+{% endblock %}

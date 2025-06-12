@@ -116,6 +116,8 @@ class Mission(db.Model):
     # Additional details
     notes = db.Column(db.Text)
     special_instructions = db.Column(db.Text)
+    payment_status = db.Column(db.String(20), default='pending')  # pending, processing, completed, failed
+    payment_method = db.Column(db.String(50))  # africanmoney, orangemoney, qmoney, card
     
     # Relationships
     telemetry_logs = db.relationship('TelemetryLog', backref='mission', lazy=True, cascade='all, delete-orphan')
