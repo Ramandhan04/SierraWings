@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" width="300" height="120">
+  <defs>
+    <!-- Gradients for modern look -->
+    <linearGradient id="primaryGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="medicalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle for logo mark -->
+  <circle cx="60" cy="60" r="45" fill="url(#primaryGradient)" opacity="0.1"/>
+  
+  <!-- Drone body (central shield shape) -->
+  <path d="M40 45 L50 35 L70 35 L80 45 L80 65 L75 75 L70 80 L50 80 L45 75 L40 65 Z" 
+        fill="url(#primaryGradient)" stroke="#1e3a8a" stroke-width="2"/>
+  
+  <!-- Medical cross -->
+  <rect x="55" y="50" width="10" height="20" fill="url(#medicalGradient)"/>
+  <rect x="50" y="55" width="20" height="10" fill="url(#medicalGradient)"/>
+  
+  <!-- Drone propellers -->
+  <!-- Top left propeller -->
+  <ellipse cx="35" cy="35" rx="12" ry="3" fill="url(#accentGradient)" transform="rotate(45 35 35)"/>
+  <ellipse cx="35" cy="35" rx="3" ry="12" fill="url(#accentGradient)" transform="rotate(45 35 35)"/>
+  <circle cx="35" cy="35" r="4" fill="#1e3a8a"/>
+  
+  <!-- Top right propeller -->
+  <ellipse cx="85" cy="35" rx="12" ry="3" fill="url(#accentGradient)" transform="rotate(-45 85 35)"/>
+  <ellipse cx="85" cy="35" rx="3" ry="12" fill="url(#accentGradient)" transform="rotate(-45 85 35)"/>
+  <circle cx="85" cy="35" r="4" fill="#1e3a8a"/>
+  
+  <!-- Bottom left propeller -->
+  <ellipse cx="35" cy="85" rx="12" ry="3" fill="url(#accentGradient)" transform="rotate(-45 35 85)"/>
+  <ellipse cx="35" cy="85" rx="3" ry="12" fill="url(#accentGradient)" transform="rotate(-45 35 85)"/>
+  <circle cx="35" cy="85" r="4" fill="#1e3a8a"/>
+  
+  <!-- Bottom right propeller -->
+  <ellipse cx="85" cy="85" rx="12" ry="3" fill="url(#accentGradient)" transform="rotate(45 85 85)"/>
+  <ellipse cx="85" cy="85" rx="3" ry="12" fill="url(#accentGradient)" transform="rotate(45 85 85)"/>
+  <circle cx="85" cy="85" r="4" fill="#1e3a8a"/>
+  
+  <!-- Drone arms -->
+  <line x1="50" y1="45" x2="35" y2="35" stroke="#1e3a8a" stroke-width="3"/>
+  <line x1="70" y1="45" x2="85" y2="35" stroke="#1e3a8a" stroke-width="3"/>
+  <line x1="50" y1="75" x2="35" y2="85" stroke="#1e3a8a" stroke-width="3"/>
+  <line x1="70" y1="75" x2="85" y2="85" stroke="#1e3a8a" stroke-width="3"/>
+  
+  <!-- Wing elements for aviation theme -->
+  <path d="M25 55 Q15 50 25 45 Q35 50 25 55" fill="url(#accentGradient)" opacity="0.8"/>
+  <path d="M95 55 Q105 50 95 45 Q85 50 95 55" fill="url(#accentGradient)" opacity="0.8"/>
+  <path d="M25 65 Q15 70 25 75 Q35 70 25 65" fill="url(#accentGradient)" opacity="0.8"/>
+  <path d="M95 65 Q105 70 95 75 Q85 70 95 65" fill="url(#accentGradient)" opacity="0.8"/>
+  
+  <!-- Company name -->
+  <text x="130" y="45" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="bold" fill="#1e3a8a">
+    SIERRAWINGS
+  </text>
+  
+  <!-- Tagline -->
+  <text x="130" y="65" font-family="Arial, Helvetica, sans-serif" font-size="12" fill="#6b7280">
+    Advanced Medical Drone Solutions
+  </text>
+  
+  <!-- Additional design elements -->
+  <circle cx="60" cy="60" r="2" fill="#10b981"/>
+  <path d="M58 58 L62 58 L60 54 Z" fill="#10b981" opacity="0.7"/>
+  
+  <!-- Signal waves -->
+  <path d="M60 40 Q65 35 70 40" stroke="#06b6d4" stroke-width="2" fill="none" opacity="0.6"/>
+  <path d="M60 42 Q63 39 66 42" stroke="#06b6d4" stroke-width="2" fill="none" opacity="0.8"/>
+  
+  <!-- Subtle glow effect -->
+  <circle cx="60" cy="60" r="48" fill="none" stroke="url(#primaryGradient)" stroke-width="1" opacity="0.3"/>
+</svg>

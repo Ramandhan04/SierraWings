@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Dashboard Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-cog text-primary me-2"></i>
+                        System Administration
+                    </h1>
+                    <p class="text-muted mb-0">Monitor and manage the SierraWings platform</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('admin.system_monitor') }}" class="btn btn-info me-2">
+                        <i class="fas fa-chart-line me-2"></i>System Monitor
+                    </a>
+                    <button class="btn btn-success" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_users }}</h3>
+                    <p>Total Users</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-info">
+                <div class="stat-icon">
+                    <i class="fas fa-helicopter"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_drones }}</h3>
+                    <p>Total Drones</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_missions }}</h3>
+                    <p>Total Missions</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-plane"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ active_missions }}</h3>
+                    <p>Active Missions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('admin.manage_users') }}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+                                <i class="fas fa-users fa-2x mb-2"></i>
+                                <strong>Manage Users</strong>
+                                <small class="text-muted">Add, edit, and manage user accounts</small>
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('admin.manage_drones') }}" class="btn btn-outline-info w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+                                <i class="fas fa-helicopter fa-2x mb-2"></i>
+                                <strong>Manage Drones</strong>
+                                <small class="text-muted">Configure and monitor drone fleet</small>
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('admin.manage_missions') }}" class="btn btn-outline-success w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+                                <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                                <strong>Manage Missions</strong>
+                                <small class="text-muted">Oversee all delivery missions</small>
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{{ url_for('admin.system_monitor') }}" class="btn btn-outline-warning w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+                                <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                <strong>System Monitor</strong>
+                                <small class="text-muted">Real-time system monitoring</small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mission Status Overview -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Mission Status Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if missions_by_status %}
+                        <div class="row">
+                            {% for status, count in missions_by_status %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="status-metric">
+                                        <div class="status-count">{{ count }}</div>
+                                        <div class="status-label">
+                                            <span class="badge bg-{{ 
+                                                'secondary' if status == 'pending' else
+                                                'info' if status == 'accepted' else
+                                                'primary' if status == 'in_flight' else
+                                                'success' if status == 'completed' else
+                                                'danger' if status in ['cancelled', 'rejected'] else
+                                                'secondary'
+                                            }}">
+                                                {{ status|replace('_', ' ')|title }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-pie fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No mission data available</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock me-2"></i>Recent Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="activity-feed">
+                        {% for mission in recent_missions[:5] %}
+                            <div class="activity-item">
+                                <div class="activity-icon bg-{{ 
+                                    'success' if mission.status == 'completed' else
+                                    'primary' if mission.status == 'in_flight' else
+                                    'info' if mission.status == 'accepted' else
+                                    'warning'
+                                }}">
+                                    <i class="fas fa-{{ 
+                                        'check' if mission.status == 'completed' else
+                                        'plane' if mission.status == 'in_flight' else
+                                        'handshake' if mission.status == 'accepted' else
+                                        'clock'
+                                    }}"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Mission #{{ mission.id }}</div>
+                                    <div class="activity-desc">
+                                        {{ mission.payload_type }} - {{ mission.status|replace('_', ' ')|title }}
+                                    </div>
+                                    <div class="activity-time">{{ mission.created_at.strftime('%m/%d %H:%M') }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Users -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Recent User Registrations
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_users %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Registered</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in recent_users %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar me-2">
+                                                    <i class="fas fa-user-circle fa-2x text-muted"></i>
+                                                </div>
+                                                <div>
+                                                    <strong>{{ user.full_name }}</strong>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ user.email }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 
+                                                'success' if user.role == 'patient' else
+                                                'primary' if user.role == 'clinic' else
+                                                'warning' if user.role == 'admin' else
+                                                'secondary'
+                                            }}">
+                                                {{ user.role|title }}
+                                            </span>
+                                        </td>
+                                        <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if user.is_active else 'danger' }}">
+                                                {{ 'Active' if user.is_active else 'Inactive' }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('admin.manage_users') }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit"></i> Manage
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No recent user registrations</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshDashboard() {
+    location.reload();
+}
+
+// Auto-refresh statistics every 60 seconds
+setInterval(function() {
+    fetch('/api/missions/stats')
+        .then(response => response.json())
+        .then(data => {
+            // Update mission counts if needed
+            console.log('Stats updated:', data);
+        })
+        .catch(error => {
+            console.error('Error updating stats:', error);
+        });
+}, 60000);
+</script>
+{% endblock %}

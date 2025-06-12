@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block title %}Live Operations - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-map-marked-alt text-primary me-2"></i>
+                        Live Operations Center
+                    </h1>
+                    <p class="text-muted mb-0">Real-time monitoring of all active missions</p>
+                </div>
+                <div>
+                    <button class="btn btn-success" onclick="refreshOperations()" id="refreshBtn">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                    <button class="btn btn-info ms-2" onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+                        <i class="fas fa-play me-2"></i>Auto Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Map -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-globe me-2"></i>Live Mission Map
+                        <span class="badge bg-primary ms-2" id="activeMissionCount">{{ missions|length }} Active</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="liveOperationsMap" style="height: 500px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mission Grid -->
+    <div class="row">
+        {% if missions %}
+            {% for mission in missions %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card mission-card" data-mission-id="{{ mission.id }}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-helicopter me-2"></i>Mission #{{ mission.id }}
+                        </h6>
+                        <span class="badge bg-primary">{{ mission.status|replace('_', ' ')|title }}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted">Patient</small>
+                                <p class="mb-2"><strong>{{ mission.user.full_name }}</strong></p>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Drone</small>
+                                <p class="mb-2">
+                                    {% if mission.drone %}
+                                        <strong>{{ mission.drone.name }}</strong>
+                                    {% else %}
+                                        <em>Unassigned</em>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <small class="text-muted">Payload</small>
+                            <p class="mb-0">{{ mission.payload_type }}</p>
+                        </div>
+                        
+                        <!-- Telemetry Widgets -->
+                        <div class="row telemetry-grid">
+                            <div class="col-6">
+                                <div class="telemetry-mini">
+                                    <i class="fas fa-battery-half text-success"></i>
+                                    <span class="battery-level" data-mission-id="{{ mission.id }}">--</span>%
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="telemetry-mini">
+                                    <i class="fas fa-tachometer-alt text-primary"></i>
+                                    <span class="speed-level" data-mission-id="{{ mission.id }}">--</span> m/s
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="telemetry-mini">
+                                    <i class="fas fa-mountain text-info"></i>
+                                    <span class="altitude-level" data-mission-id="{{ mission.id }}">--</span> m
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="telemetry-mini">
+                                    <i class="fas fa-signal text-success"></i>
+                                    <span class="signal-level" data-mission-id="{{ mission.id }}">--</span>%
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <small class="text-muted">
+                                Started: {{ mission.started_at.strftime('%H:%M') if mission.started_at }}
+                            </small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-info" onclick="focusOnMission({{ mission.id }})">
+                                    <i class="fas fa-crosshairs"></i> Focus
+                                </button>
+                                <button class="btn btn-outline-primary" onclick="viewMissionDetails({{ mission.id }})">
+                                    <i class="fas fa-eye"></i> Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-plane fa-3x text-muted mb-3"></i>
+                        <h5>No Active Missions</h5>
+                        <p class="text-muted">All drones are currently on standby. Active missions will appear here.</p>
+                        <a href="{{ url_for('clinic.dashboard') }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Mission Details Modal -->
+<div class="modal fade" id="liveOperationDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-clipboard-list me-2"></i>Live Mission Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="liveOperationDetailsContent">
+                    <!-- Content loaded via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let liveOperationsMap = null;
+let missionMarkers = {};
+let missionPaths = {};
+let autoRefreshInterval = null;
+let isAutoRefreshEnabled = false;
+
+// Initialize map on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeLiveOperationsMap();
+    loadAllMissionTelemetry();
+});
+
+function initializeLiveOperationsMap() {
+    liveOperationsMap = L.map('liveOperationsMap').setView([37.7749, -122.4194], 11);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(liveOperationsMap);
+    
+    // Add mission markers for each active mission
+    {% for mission in missions %}
+        addMissionToMap({{ mission.id }}, '{{ mission.user.full_name }}', '{{ mission.drone.name if mission.drone else "Unknown" }}');
+    {% endfor %}
+}
+
+function addMissionToMap(missionId, patientName, droneName) {
+    // Create drone marker
+    const droneIcon = L.divIcon({
+        className: 'live-drone-marker',
+        html: `<i class="fas fa-helicopter" style="color: #0d6efd; font-size: 18px;"></i>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+    });
+    
+    // Initial position (will be updated with real telemetry)
+    const initialPos = [37.7749 + (Math.random() - 0.5) * 0.1, -122.4194 + (Math.random() - 0.5) * 0.1];
+    
+    const marker = L.marker(initialPos, {icon: droneIcon}).addTo(liveOperationsMap);
+    marker.bindPopup(`
+        <div class="mission-popup">
+            <h6>Mission #${missionId}</h6>
+            <p><strong>Patient:</strong> ${patientName}</p>
+            <p><strong>Drone:</strong> ${droneName}</p>
+            <button class="btn btn-sm btn-primary" onclick="viewMissionDetails(${missionId})">View Details</button>
+        </div>
+    `);
+    
+    // Create flight path
+    const path = L.polyline([], {color: '#0d6efd', weight: 3, opacity: 0.7}).addTo(liveOperationsMap);
+    
+    missionMarkers[missionId] = marker;
+    missionPaths[missionId] = path;
+}
+
+function loadAllMissionTelemetry() {
+    {% for mission in missions %}
+        loadMissionTelemetry({{ mission.id }});
+    {% endfor %}
+}
+
+function loadMissionTelemetry(missionId) {
+    // Generate new telemetry data
+    fetch(`/api/telemetry/simulate/${missionId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).then(() => {
+        // Fetch updated telemetry
+        return fetch(`/api/telemetry?mission_id=${missionId}`);
+    }).then(response => response.json()).then(data => {
+        if (data.length > 0) {
+            updateMissionDisplay(missionId, data);
+        }
+    }).catch(error => {
+        console.error(`Error loading telemetry for mission ${missionId}:`, error);
+    });
+}
+
+function updateMissionDisplay(missionId, telemetryData) {
+    const latest = telemetryData[0];
+    
+    // Update map marker position
+    if (missionMarkers[missionId] && latest.latitude && latest.longitude) {
+        const newPos = [latest.latitude, latest.longitude];
+        missionMarkers[missionId].setLatLng(newPos);
+        
+        // Update flight path
+        const pathCoords = telemetryData.slice(0, 20).map(t => [t.latitude, t.longitude]).reverse();
+        missionPaths[missionId].setLatLngs(pathCoords);
+    }
+    
+    // Update telemetry widgets in mission cards
+    updateTelemetryWidget('battery-level', missionId, latest.battery_level);
+    updateTelemetryWidget('speed-level', missionId, latest.speed ? latest.speed.toFixed(1) : '--');
+    updateTelemetryWidget('altitude-level', missionId, latest.altitude ? latest.altitude.toFixed(0) : '--');
+    updateTelemetryWidget('signal-level', missionId, latest.signal_strength);
+}
+
+function updateTelemetryWidget(className, missionId, value) {
+    const element = document.querySelector(`.${className}[data-mission-id="${missionId}"]`);
+    if (element) {
+        element.textContent = value || '--';
+    }
+}
+
+function focusOnMission(missionId) {
+    if (missionMarkers[missionId]) {
+        const marker = missionMarkers[missionId];
+        liveOperationsMap.setView(marker.getLatLng(), 15);
+        marker.openPopup();
+        
+        // Highlight mission card
+        document.querySelectorAll('.mission-card').forEach(card => {
+            card.classList.remove('highlighted');
+        });
+        document.querySelector(`[data-mission-id="${missionId}"]`).classList.add('highlighted');
+    }
+}
+
+function viewMissionDetails(missionId) {
+    const modal = new bootstrap.Modal(document.getElementById('liveOperationDetailsModal'));
+    document.getElementById('liveOperationDetailsContent').innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i>
+            <p>Loading mission details...</p>
+        </div>
+    `;
+    modal.show();
+    
+    // Simulate loading detailed information
+    setTimeout(() => {
+        document.getElementById('liveOperationDetailsContent').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Mission Information</h6>
+                    <p><strong>Mission ID:</strong> #${missionId}</p>
+                    <p><strong>Status:</strong> <span class="badge bg-primary">In Flight</span></p>
+                    <p><strong>Priority:</strong> <span class="badge bg-warning">High</span></p>
+                    <p><strong>Started:</strong> ${new Date().toLocaleTimeString()}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Current Telemetry</h6>
+                    <p><strong>Battery:</strong> <span class="battery-level" data-mission-id="${missionId}">--</span>%</p>
+                    <p><strong>Speed:</strong> <span class="speed-level" data-mission-id="${missionId}">--</span> m/s</p>
+                    <p><strong>Altitude:</strong> <span class="altitude-level" data-mission-id="${missionId}">--</span> m</p>
+                    <p><strong>Signal:</strong> <span class="signal-level" data-mission-id="${missionId}">--</span>%</p>
+                </div>
+            </div>
+            <hr>
+            <h6>Route Information</h6>
+            <p><strong>Pickup:</strong> City Hospital Medical Center</p>
+            <p><strong>Delivery:</strong> Patient Residence</p>
+            <p><strong>Estimated Time:</strong> 15 minutes remaining</p>
+        `;
+        
+        // Update telemetry in modal
+        loadMissionTelemetry(missionId);
+    }, 1000);
+}
+
+function refreshOperations() {
+    const btn = document.getElementById('refreshBtn');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Refreshing...';
+    btn.disabled = true;
+    
+    loadAllMissionTelemetry();
+    
+    setTimeout(() => {
+        btn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Refresh';
+        btn.disabled = false;
+    }, 2000);
+}
+
+function toggleAutoRefresh() {
+    const btn = document.getElementById('autoRefreshBtn');
+    
+    if (isAutoRefreshEnabled) {
+        // Stop auto refresh
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+        isAutoRefreshEnabled = false;
+        btn.innerHTML = '<i class="fas fa-play me-2"></i>Auto Refresh';
+        btn.classList.remove('btn-danger');
+        btn.classList.add('btn-info');
+    } else {
+        // Start auto refresh
+        autoRefreshInterval = setInterval(loadAllMissionTelemetry, 5000); // Every 5 seconds
+        isAutoRefreshEnabled = true;
+        btn.innerHTML = '<i class="fas fa-pause me-2"></i>Stop Auto Refresh';
+        btn.classList.remove('btn-info');
+        btn.classList.add('btn-danger');
+    }
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+});
+
+// Initial telemetry load
+setTimeout(loadAllMissionTelemetry, 1000);
+</script>
+
+<style>
+.mission-card {
+    transition: all 0.3s ease;
+}
+
+.mission-card.highlighted {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.telemetry-grid {
+    background: #f8fafc;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 1rem;
+}
+
+.telemetry-mini {
+    text-align: center;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+
+.telemetry-mini i {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.live-drone-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 2px solid #0d6efd;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.mission-popup {
+    text-align: center;
+}
+
+.mission-popup h6 {
+    margin-bottom: 0.5rem;
+    color: #0d6efd;
+}
+
+.mission-popup p {
+    margin-bottom: 0.25rem;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}

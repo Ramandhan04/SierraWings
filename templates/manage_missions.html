@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Missions - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-clipboard-list text-primary me-2"></i>
+                        Mission Management
+                    </h1>
+                    <p class="text-muted mb-0">Monitor and manage all delivery missions</p>
+                </div>
+                <button class="btn btn-success" onclick="refreshMissions()">
+                    <i class="fas fa-sync-alt me-2"></i>Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status Filter</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Statuses</option>
+                        <option value="pending" {{ 'selected' if request.args.get('status') == 'pending' }}>Pending</option>
+                        <option value="accepted" {{ 'selected' if request.args.get('status') == 'accepted' }}>Accepted</option>
+                        <option value="in_flight" {{ 'selected' if request.args.get('status') == 'in_flight' }}>In Flight</option>
+                        <option value="completed" {{ 'selected' if request.args.get('status') == 'completed' }}>Completed</option>
+                        <option value="cancelled" {{ 'selected' if request.args.get('status') == 'cancelled' }}>Cancelled</option>
+                        <option value="rejected" {{ 'selected' if request.args.get('status') == 'rejected' }}>Rejected</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="user" class="form-label">User Filter</label>
+                    <input type="text" class="form-control" id="user" name="user" 
+                           placeholder="Search by email" value="{{ request.args.get('user', '') }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-filter me-2"></i>Apply Filters
+                    </button>
+                    <a href="{{ url_for('admin.manage_missions') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-2"></i>Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Missions Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-list me-2"></i>All Missions ({{ missions|length }})
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if missions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Patient</th>
+                                <th>Payload</th>
+                                <th>Route</th>
+                                <th>Drone</th>
+                                <th>Priority</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mission in missions %}
+                            <tr>
+                                <td><strong>#{{ mission.id }}</strong></td>
+                                <td>
+                                    <div>
+                                        <strong>{{ mission.user.full_name }}</strong>
+                                        <br><small class="text-muted">{{ mission.user.email }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    {{ mission.payload_type }}
+                                    {% if mission.payload_weight %}
+                                        <br><small class="text-muted">{{ mission.payload_weight }}kg</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>
+                                        <strong>From:</strong> {{ mission.pickup_address[:25] }}...<br>
+                                        <strong>To:</strong> {{ mission.delivery_address[:25] }}...
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if mission.drone %}
+                                        <div>
+                                            <strong>{{ mission.drone.name }}</strong>
+                                            <br><small class="text-muted">{{ mission.drone.model }}</small>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">Unassigned</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 
+                                        'danger' if mission.priority == 'emergency' else
+                                        'warning' if mission.priority == 'high' else
+                                        'primary'
+                                    }}">
+                                        {{ mission.priority|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 
+                                        'secondary' if mission.status == 'pending' else
+                                        'info' if mission.status == 'accepted' else
+                                        'primary' if mission.status == 'in_flight' else
+                                        'success' if mission.status == 'completed' else
+                                        'danger' if mission.status in ['cancelled', 'rejected'] else
+                                        'secondary'
+                                    }}">
+                                        {{ mission.status|replace('_', ' ')|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if mission.started_at and mission.completed_at %}
+                                        {{ mission.duration_str }}
+                                    {% elif mission.started_at %}
+                                        <span class="text-muted" id="live-duration-{{ mission.id }}">
+                                            In progress...
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        {% if mission.status == 'in_flight' %}
+                                            <button class="btn btn-sm btn-info" onclick="trackMission({{ mission.id }})">
+                                                <i class="fas fa-map-marker-alt"></i> Track
+                                            </button>
+                                        {% endif %}
+                                        
+                                        {% if mission.status in ['pending', 'accepted', 'in_flight'] %}
+                                            <form method="POST" action="{{ url_for('admin.cancel_mission', mission_id=mission.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        onclick="return confirm('Are you sure you want to cancel this mission?')">
+                                                    <i class="fas fa-times"></i> Cancel
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewMissionDetails({{ mission.id }})">
+                                            <i class="fas fa-eye"></i> Details
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                    <h5>No missions found</h5>
+                    <p class="text-muted">
+                        {% if request.args.get('status') or request.args.get('user') %}
+                            No missions match your current filters.
+                        {% else %}
+                            No missions have been created yet.
+                        {% endif %}
+                    </p>
+                    {% if request.args.get('status') or request.args.get('user') %}
+                        <a href="{{ url_for('admin.manage_missions') }}" class="btn btn-primary">
+                            <i class="fas fa-times me-2"></i>Clear Filters
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Track Mission Modal -->
+<div class="modal fade" id="trackMissionModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-map-marker-alt me-2"></i>Mission Tracking
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="adminTrackingMap" style="height: 500px;"></div>
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-battery-three-quarters text-success"></i>
+                            <span>Battery: <span id="adminBatteryLevel">--</span>%</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-tachometer-alt text-primary"></i>
+                            <span>Speed: <span id="adminDroneSpeed">--</span> m/s</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-mountain text-info"></i>
+                            <span>Altitude: <span id="adminDroneAltitude">--</span> m</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-signal text-success"></i>
+                            <span>Signal: <span id="adminSignalStrength">--</span>%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mission Details Modal -->
+<div class="modal fade" id="missionDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-clipboard-list me-2"></i>Mission Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="missionDetailsContent">
+                    <!-- Content loaded via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let adminTrackingMap = null;
+let adminTrackingInterval = null;
+let adminCurrentMissionId = null;
+
+function refreshMissions() {
+    location.reload();
+}
+
+function trackMission(missionId) {
+    adminCurrentMissionId = missionId;
+    $('#trackMissionModal').modal('show');
+    
+    $('#trackMissionModal').on('shown.bs.modal', function() {
+        if (!adminTrackingMap) {
+            initAdminTrackingMap();
+        }
+        startAdminTracking();
+    });
+    
+    $('#trackMissionModal').on('hidden.bs.modal', function() {
+        stopAdminTracking();
+    });
+}
+
+function initAdminTrackingMap() {
+    adminTrackingMap = L.map('adminTrackingMap').setView([37.7749, -122.4194], 12);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(adminTrackingMap);
+}
+
+function startAdminTracking() {
+    updateAdminTelemetry();
+    adminTrackingInterval = setInterval(updateAdminTelemetry, 2000);
+}
+
+function stopAdminTracking() {
+    if (adminTrackingInterval) {
+        clearInterval(adminTrackingInterval);
+        adminTrackingInterval = null;
+    }
+}
+
+function updateAdminTelemetry() {
+    if (!adminCurrentMissionId) return;
+    
+    fetch(`/api/telemetry?mission_id=${adminCurrentMissionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const latest = data[0];
+                
+                // Update telemetry widgets
+                document.getElementById('adminBatteryLevel').textContent = latest.battery_level || '--';
+                document.getElementById('adminDroneSpeed').textContent = latest.speed ? latest.speed.toFixed(1) : '--';
+                document.getElementById('adminDroneAltitude').textContent = latest.altitude ? latest.altitude.toFixed(0) : '--';
+                document.getElementById('adminSignalStrength').textContent = latest.signal_strength || '--';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching telemetry:', error);
+        });
+    
+    // Generate telemetry data
+    fetch(`/api/telemetry/simulate/${adminCurrentMissionId}`, {
+        method: 'POST'
+    }).catch(error => {
+        console.error('Error generating telemetry:', error);
+    });
+}
+
+function viewMissionDetails(missionId) {
+    const modal = new bootstrap.Modal(document.getElementById('missionDetailsModal'));
+    document.getElementById('missionDetailsContent').innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-spinner fa-spin fa-2x text-muted mb-3"></i>
+            <p>Loading mission details...</p>
+        </div>
+    `;
+    modal.show();
+    
+    // Simulate loading mission details
+    setTimeout(() => {
+        document.getElementById('missionDetailsContent').innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Mission Information</h6>
+                    <p><strong>Mission ID:</strong> #${missionId}</p>
+                    <p><strong>Status:</strong> <span class="badge bg-primary">In Progress</span></p>
+                    <p><strong>Priority:</strong> <span class="badge bg-warning">High</span></p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Patient Information</h6>
+                    <p><strong>Name:</strong> John Doe</p>
+                    <p><strong>Contact:</strong> john@example.com</p>
+                </div>
+            </div>
+            <hr>
+            <h6>Payload Details</h6>
+            <p><strong>Type:</strong> Medical Supplies</p>
+            <p><strong>Weight:</strong> 2.5 kg</p>
+            <p><strong>Special Instructions:</strong> Handle with care, temperature sensitive</p>
+            <hr>
+            <h6>Route Information</h6>
+            <p><strong>Pickup:</strong> City Hospital, 123 Medical Center Dr</p>
+            <p><strong>Delivery:</strong> Patient Home, 456 Residential St</p>
+        `;
+    }, 1000);
+}
+
+// Update live durations every minute
+setInterval(function() {
+    const inProgressElements = document.querySelectorAll('[id^="live-duration-"]');
+    inProgressElements.forEach(element => {
+        element.textContent = 'In progress...';
+    });
+}, 60000);
+</script>
+{% endblock %}

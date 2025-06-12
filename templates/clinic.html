@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+
+{% block title %}Clinic Dashboard - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Dashboard Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-hospital text-primary me-2"></i>
+                        Clinic Operations Center
+                    </h1>
+                    <p class="text-muted mb-0">Manage medical deliveries and drone operations</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('clinic.live_operations') }}" class="btn btn-info me-2">
+                        <i class="fas fa-map-marked-alt me-2"></i>Live Operations
+                    </a>
+                    <button class="btn btn-success" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_pending }}</h3>
+                    <p>Pending Requests</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-plane"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_in_flight }}</h3>
+                    <p>In Flight</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_completed_today }}</h3>
+                    <p>Completed Today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-info">
+                <div class="stat-icon">
+                    <i class="fas fa-helicopter"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ available_drones|length }}</h3>
+                    <p>Available Drones</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Tabs -->
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="operationsTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab">
+                        <i class="fas fa-clock me-2"></i>Pending Requests ({{ pending_missions|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="accepted-tab" data-bs-toggle="tab" data-bs-target="#accepted" type="button" role="tab">
+                        <i class="fas fa-check me-2"></i>Accepted ({{ accepted_missions|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="inflight-tab" data-bs-toggle="tab" data-bs-target="#inflight" type="button" role="tab">
+                        <i class="fas fa-plane me-2"></i>In Flight ({{ in_flight_missions|length }})
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="operationsTabContent">
+                <!-- Pending Requests Tab -->
+                <div class="tab-pane fade show active" id="pending" role="tabpanel">
+                    {% if pending_missions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Patient</th>
+                                        <th>Payload</th>
+                                        <th>Route</th>
+                                        <th>Priority</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mission in pending_missions %}
+                                    <tr>
+                                        <td><strong>#{{ mission.id }}</strong></td>
+                                        <td>{{ mission.user.full_name }}</td>
+                                        <td>
+                                            {{ mission.payload_type }}
+                                            {% if mission.payload_weight %}
+                                                <br><small class="text-muted">{{ mission.payload_weight }}kg</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>
+                                                <strong>From:</strong> {{ mission.pickup_address[:30] }}...<br>
+                                                <strong>To:</strong> {{ mission.delivery_address[:30] }}...
+                                            </small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'danger' if mission.priority == 'emergency' else 'warning' if mission.priority == 'high' else 'primary' }}">
+                                                {{ mission.priority|title }}
+                                            </span>
+                                        </td>
+                                        <td>{{ mission.created_at.strftime('%m/%d %H:%M') }}</td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <form method="POST" action="{{ url_for('clinic.accept_mission', mission_id=mission.id) }}" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-success">
+                                                        <i class="fas fa-check"></i> Accept
+                                                    </button>
+                                                </form>
+                                                <form method="POST" action="{{ url_for('clinic.reject_mission', mission_id=mission.id) }}" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to reject this mission?')">
+                                                        <i class="fas fa-times"></i> Reject
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5>No pending requests</h5>
+                            <p class="text-muted">All delivery requests have been processed.</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Accepted Missions Tab -->
+                <div class="tab-pane fade" id="accepted" role="tabpanel">
+                    {% if accepted_missions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Patient</th>
+                                        <th>Payload</th>
+                                        <th>Priority</th>
+                                        <th>Accepted At</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mission in accepted_missions %}
+                                    <tr>
+                                        <td><strong>#{{ mission.id }}</strong></td>
+                                        <td>{{ mission.user.full_name }}</td>
+                                        <td>{{ mission.payload_type }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'danger' if mission.priority == 'emergency' else 'warning' if mission.priority == 'high' else 'primary' }}">
+                                                {{ mission.priority|title }}
+                                            </span>
+                                        </td>
+                                        <td>{{ mission.accepted_at.strftime('%m/%d %H:%M') }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" onclick="dispatchMission({{ mission.id }})">
+                                                <i class="fas fa-paper-plane"></i> Dispatch
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-muted mb-3"></i>
+                            <h5>No accepted missions</h5>
+                            <p class="text-muted">Accept pending requests to see them here.</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- In Flight Tab -->
+                <div class="tab-pane fade" id="inflight" role="tabpanel">
+                    {% if in_flight_missions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Patient</th>
+                                        <th>Drone</th>
+                                        <th>Payload</th>
+                                        <th>Started At</th>
+                                        <th>Duration</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mission in in_flight_missions %}
+                                    <tr>
+                                        <td><strong>#{{ mission.id }}</strong></td>
+                                        <td>{{ mission.user.full_name }}</td>
+                                        <td>
+                                            {% if mission.drone %}
+                                                {{ mission.drone.name }}
+                                                <br><small class="text-muted">{{ mission.drone.model }}</small>
+                                            {% else %}
+                                                <span class="text-muted">Unassigned</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ mission.payload_type }}</td>
+                                        <td>{{ mission.started_at.strftime('%m/%d %H:%M') }}</td>
+                                        <td>
+                                            <span class="text-muted" id="duration-{{ mission.id }}">
+                                                {% set duration = moment().utc() - mission.started_at %}
+                                                {{ duration.seconds // 60 }}m
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-info" onclick="trackMission({{ mission.id }})">
+                                                    <i class="fas fa-map-marker-alt"></i> Track
+                                                </button>
+                                                <form method="POST" action="{{ url_for('clinic.complete_mission', mission_id=mission.id) }}" class="d-inline">
+                                                    <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Mark this mission as completed?')">
+                                                        <i class="fas fa-flag-checkered"></i> Complete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-plane fa-3x text-muted mb-3"></i>
+                            <h5>No active flights</h5>
+                            <p class="text-muted">Dispatch accepted missions to see them here.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dispatch Modal -->
+<div class="modal fade" id="dispatchModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-paper-plane me-2"></i>Dispatch Mission
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="dispatchForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="drone_id" class="form-label">Select Drone</label>
+                        <select class="form-select" id="drone_id" name="drone_id" required>
+                            <option value="">Choose a drone...</option>
+                            {% for drone in available_drones %}
+                                <option value="{{ drone.id }}">
+                                    {{ drone.name }} - {{ drone.model }} (Battery: {{ drone.battery_level }}%)
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Once dispatched, the drone will begin its mission and telemetry data will be available for tracking.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-rocket me-2"></i>Dispatch Drone
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Track Mission Modal -->
+<div class="modal fade" id="trackMissionModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-map-marker-alt me-2"></i>Live Mission Tracking
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="trackingMap" style="height: 500px;"></div>
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-battery-three-quarters text-success"></i>
+                            <span>Battery: <span id="batteryLevel">--</span>%</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-tachometer-alt text-primary"></i>
+                            <span>Speed: <span id="droneSpeed">--</span> m/s</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-mountain text-info"></i>
+                            <span>Altitude: <span id="droneAltitude">--</span> m</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-signal text-success"></i>
+                            <span>Signal: <span id="signalStrength">--</span>%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let trackingMap = null;
+let trackingInterval = null;
+let currentMissionId = null;
+
+function dispatchMission(missionId) {
+    const form = document.getElementById('dispatchForm');
+    form.action = `/clinic/mission/${missionId}/dispatch`;
+    $('#dispatchModal').modal('show');
+}
+
+function trackMission(missionId) {
+    currentMissionId = missionId;
+    $('#trackMissionModal').modal('show');
+    
+    $('#trackMissionModal').on('shown.bs.modal', function() {
+        if (!trackingMap) {
+            initTrackingMap();
+        }
+        startTracking();
+    });
+    
+    $('#trackMissionModal').on('hidden.bs.modal', function() {
+        stopTracking();
+    });
+}
+
+function initTrackingMap() {
+    trackingMap = L.map('trackingMap').setView([37.7749, -122.4194], 12);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(trackingMap);
+}
+
+function startTracking() {
+    updateTelemetry();
+    trackingInterval = setInterval(updateTelemetry, 1000);
+}
+
+function stopTracking() {
+    if (trackingInterval) {
+        clearInterval(trackingInterval);
+        trackingInterval = null;
+    }
+}
+
+function updateTelemetry() {
+    if (!currentMissionId) return;
+    
+    fetch(`/api/telemetry?mission_id=${currentMissionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const latest = data[0];
+                
+                // Update telemetry widgets
+                document.getElementById('batteryLevel').textContent = latest.battery_level || '--';
+                document.getElementById('droneSpeed').textContent = latest.speed ? latest.speed.toFixed(1) : '--';
+                document.getElementById('droneAltitude').textContent = latest.altitude ? latest.altitude.toFixed(0) : '--';
+                document.getElementById('signalStrength').textContent = latest.signal_strength || '--';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching telemetry:', error);
+        });
+    
+    // Generate new telemetry data
+    fetch(`/api/telemetry/simulate/${currentMissionId}`, {
+        method: 'POST'
+    }).catch(error => {
+        console.error('Error generating telemetry:', error);
+    });
+}
+
+function refreshDashboard() {
+    location.reload();
+}
+
+// Auto-refresh dashboard every 30 seconds
+setInterval(function() {
+    // Update mission counts without full page reload
+    fetch('/api/missions/stats')
+        .then(response => response.json())
+        .then(data => {
+            // Update tab badges
+            document.querySelector('#pending-tab').innerHTML = `<i class="fas fa-clock me-2"></i>Pending Requests (${data.pending})`;
+            document.querySelector('#accepted-tab').innerHTML = `<i class="fas fa-check me-2"></i>Accepted (${data.accepted})`;
+            document.querySelector('#inflight-tab').innerHTML = `<i class="fas fa-plane me-2"></i>In Flight (${data.in_flight})`;
+        })
+        .catch(error => {
+            console.error('Error updating stats:', error);
+        });
+}, 30000);
+</script>
+{% endblock %}

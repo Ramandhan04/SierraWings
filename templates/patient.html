@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Dashboard - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Dashboard Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-tachometer-alt text-primary me-2"></i>
+                        Welcome, {{ current_user.first_name }}
+                    </h1>
+                    <p class="text-muted mb-0">Manage your medical delivery requests</p>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestDeliveryModal">
+                    <i class="fas fa-plus me-2"></i>Request Delivery
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ total_missions }}</h3>
+                    <p>Total Requests</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ pending_missions }}</h3>
+                    <p>Pending</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-info">
+                <div class="stat-icon">
+                    <i class="fas fa-plane"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ in_flight_missions }}</h3>
+                    <p>In Flight</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ completed_missions }}</h3>
+                    <p>Completed</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mission List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2"></i>My Delivery Requests
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if missions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Payload</th>
+                                        <th>Pickup Address</th>
+                                        <th>Delivery Address</th>
+                                        <th>Priority</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mission in missions %}
+                                    <tr>
+                                        <td><strong>#{{ mission.id }}</strong></td>
+                                        <td>
+                                            {{ mission.payload_type }}
+                                            {% if mission.payload_weight %}
+                                                <br><small class="text-muted">{{ mission.payload_weight }}kg</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ mission.pickup_address[:50] }}{% if mission.pickup_address|length > 50 %}...{% endif %}</td>
+                                        <td>{{ mission.delivery_address[:50] }}{% if mission.delivery_address|length > 50 %}...{% endif %}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'danger' if mission.priority == 'emergency' else 'warning' if mission.priority == 'high' else 'primary' }}">
+                                                {{ mission.priority|title }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 
+                                                'secondary' if mission.status == 'pending' else
+                                                'info' if mission.status == 'accepted' else
+                                                'primary' if mission.status == 'in_flight' else
+                                                'success' if mission.status == 'completed' else
+                                                'danger' if mission.status in ['cancelled', 'rejected'] else
+                                                'secondary'
+                                            }}">
+                                                {{ mission.status|replace('_', ' ')|title }}
+                                            </span>
+                                        </td>
+                                        <td>{{ mission.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                {% if mission.status == 'in_flight' %}
+                                                    <button class="btn btn-sm btn-primary" onclick="trackMission({{ mission.id }})">
+                                                        <i class="fas fa-map-marker-alt"></i> Track
+                                                    </button>
+                                                {% endif %}
+                                                <button class="btn btn-sm btn-outline-primary" onclick="viewMissionDetails({{ mission.id }})">
+                                                    <i class="fas fa-eye"></i> Details
+                                                </button>
+                                                {% if mission.status in ['pending', 'accepted'] %}
+                                                    <form method="POST" action="{{ url_for('patient.cancel_mission', mission_id=mission.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to cancel this mission?')">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                            <i class="fas fa-times"></i> Cancel
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                            <h5>No delivery requests yet</h5>
+                            <p class="text-muted">Click "Request Delivery" to create your first delivery request.</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestDeliveryModal">
+                                <i class="fas fa-plus me-2"></i>Request Your First Delivery
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request Delivery Modal -->
+<div class="modal fade" id="requestDeliveryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>Request Medical Delivery
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('patient.request_delivery') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payload_type" class="form-label">Payload Type</label>
+                                <select class="form-select" id="payload_type" name="payload_type" required>
+                                    <option value="">Select payload type</option>
+                                    <option value="Medication">Medication</option>
+                                    <option value="Medical Supplies">Medical Supplies</option>
+                                    <option value="Blood Sample">Blood Sample</option>
+                                    <option value="Test Results">Test Results</option>
+                                    <option value="Emergency Kit">Emergency Kit</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="payload_weight" class="form-label">Weight (kg) - Optional</label>
+                                <input type="number" class="form-control" id="payload_weight" name="payload_weight" min="0.1" max="10" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="pickup_address" class="form-label">Pickup Address</label>
+                        <textarea class="form-control" id="pickup_address" name="pickup_address" rows="2" required placeholder="Enter the full pickup address"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="delivery_address" class="form-label">Delivery Address</label>
+                        <textarea class="form-control" id="delivery_address" name="delivery_address" rows="2" required placeholder="Enter the full delivery address"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="priority" class="form-label">Priority Level</label>
+                        <select class="form-select" id="priority" name="priority" required>
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                            <option value="emergency">Emergency</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="special_instructions" class="form-label">Special Instructions (Optional)</label>
+                        <textarea class="form-control" id="special_instructions" name="special_instructions" rows="3" placeholder="Any special handling instructions or notes"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-2"></i>Submit Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Track Mission Modal -->
+<div class="modal fade" id="trackMissionModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-map-marker-alt me-2"></i>Live Drone Tracking
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="trackingMap" style="height: 500px;"></div>
+                <div class="row mt-3">
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-battery-three-quarters text-success"></i>
+                            <span>Battery: <span id="batteryLevel">--</span>%</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-tachometer-alt text-primary"></i>
+                            <span>Speed: <span id="droneSpeed">--</span> m/s</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-mountain text-info"></i>
+                            <span>Altitude: <span id="droneAltitude">--</span> m</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="telemetry-widget">
+                            <i class="fas fa-signal text-success"></i>
+                            <span>Signal: <span id="signalStrength">--</span>%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let trackingMap = null;
+let trackingInterval = null;
+let currentMissionId = null;
+let droneMarker = null;
+let flightPath = null;
+
+function trackMission(missionId) {
+    currentMissionId = missionId;
+    $('#trackMissionModal').modal('show');
+    
+    // Initialize map when modal is shown
+    $('#trackMissionModal').on('shown.bs.modal', function() {
+        if (!trackingMap) {
+            initTrackingMap();
+        }
+        startTracking();
+    });
+    
+    // Clean up when modal is hidden
+    $('#trackMissionModal').on('hidden.bs.modal', function() {
+        stopTracking();
+    });
+}
+
+function initTrackingMap() {
+    trackingMap = L.map('trackingMap').setView([37.7749, -122.4194], 12);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(trackingMap);
+    
+    // Add drone marker
+    const droneIcon = L.divIcon({
+        className: 'drone-marker',
+        html: '<i class="fas fa-helicopter" style="color: #0d6efd; font-size: 20px;"></i>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 15]
+    });
+    
+    droneMarker = L.marker([37.7749, -122.4194], {icon: droneIcon}).addTo(trackingMap);
+    
+    // Initialize flight path
+    flightPath = L.polyline([], {color: 'blue', weight: 3, opacity: 0.7}).addTo(trackingMap);
+}
+
+function startTracking() {
+    updateTelemetry();
+    trackingInterval = setInterval(updateTelemetry, 2000); // Update every 2 seconds
+}
+
+function stopTracking() {
+    if (trackingInterval) {
+        clearInterval(trackingInterval);
+        trackingInterval = null;
+    }
+}
+
+function updateTelemetry() {
+    if (!currentMissionId) return;
+    
+    fetch(`/api/telemetry?mission_id=${currentMissionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const latest = data[0];
+                
+                // Update map
+                const newPos = [latest.latitude, latest.longitude];
+                droneMarker.setLatLng(newPos);
+                trackingMap.setView(newPos, 14);
+                
+                // Update flight path
+                const pathCoords = data.slice(0, 10).map(t => [t.latitude, t.longitude]).reverse();
+                flightPath.setLatLngs(pathCoords);
+                
+                // Update telemetry widgets
+                document.getElementById('batteryLevel').textContent = latest.battery_level || '--';
+                document.getElementById('droneSpeed').textContent = latest.speed ? latest.speed.toFixed(1) : '--';
+                document.getElementById('droneAltitude').textContent = latest.altitude ? latest.altitude.toFixed(0) : '--';
+                document.getElementById('signalStrength').textContent = latest.signal_strength || '--';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching telemetry:', error);
+        });
+    
+    // Simulate telemetry data generation
+    fetch(`/api/telemetry/simulate/${currentMissionId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    }).catch(error => {
+        console.error('Error generating telemetry:', error);
+    });
+}
+
+function viewMissionDetails(missionId) {
+    window.location.href = `/patient/mission/${missionId}/details`;
+}
+</script>
+{% endblock %}
