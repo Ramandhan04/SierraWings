@@ -274,10 +274,66 @@ def cancel_mission(mission_id):
 @login_required
 @admin_required
 def system_monitor():
-    # Get all in-flight missions
-    in_flight_missions = Mission.query.filter_by(status='in_flight').all()
+    from datetime import datetime, timedelta
+    import psutil
     
-    # Get system statistics
+    # System metrics
+    cpu_percent = psutil.cpu_percent(interval=1)
+    memory = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    
+    # Database metrics
+    total_users = User.query.count()
+    active_users = User.query.filter_by(is_active=True).count()
+    total_clinics = ClinicProfile.query.count() if 'ClinicProfile' in globals() else 0
+    verified_clinics = ClinicProfile.query.filter_by(is_verified=True).count() if 'ClinicProfile' in globals() else 0
+    total_drones = Drone.query.count()
+    available_drones = Drone.query.filter_by(status='available').count()
+    total_missions = Mission.query.count()
+    
+    # Recent activity (last 24 hours)
+    yesterday = datetime.utcnow() - timedelta(days=1)
+    recent_users = User.query.filter(User.created_at >= yesterday).count()
+    recent_missions = Mission.query.filter(Mission.created_at >= yesterday).count()
+    
+    # Mission status breakdown
+    pending_missions = Mission.query.filter_by(status='pending').count()
+    in_flight_missions = Mission.query.filter_by(status='in_flight').count()
+    completed_missions = Mission.query.filter_by(status='completed').count()
+    
+    # Recent missions for activity feed
+    recent_mission_list = Mission.query.order_by(Mission.created_at.desc()).limit(10).all()
+    
+    # Recent users for activity feed
+    recent_user_list = User.query.order_by(User.created_at.desc()).limit(10).all()
+    
+    # System health indicators
+    system_health = {
+        'database': 'healthy',
+        'storage': 'healthy' if disk.percent < 80 else 'warning' if disk.percent < 90 else 'critical',
+        'memory': 'healthy' if memory.percent < 80 else 'warning' if memory.percent < 90 else 'critical',
+        'cpu': 'healthy' if cpu_percent < 80 else 'warning' if cpu_percent < 90 else 'critical'
+    }
+    
+    return render_template('system_monitor.html',
+                         cpu_percent=cpu_percent,
+                         memory=memory,
+                         disk=disk,
+                         total_users=total_users,
+                         active_users=active_users,
+                         total_clinics=total_clinics,
+                         verified_clinics=verified_clinics,
+                         total_drones=total_drones,
+                         available_drones=available_drones,
+                         total_missions=total_missions,
+                         recent_users=recent_users,
+                         recent_missions=recent_missions,
+                         pending_missions=pending_missions,
+                         in_flight_missions=in_flight_missions,
+                         completed_missions=completed_missions,
+                         recent_mission_list=recent_mission_list,
+                         recent_user_list=recent_user_list,
+                         system_health=system_health)
     system_stats = {
         'total_flights_today': Mission.query.filter(
             Mission.created_at >= datetime.utcnow().date()
