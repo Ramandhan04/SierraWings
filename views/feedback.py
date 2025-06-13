@@ -105,4 +105,3 @@ def respond_to_feedback(feedback_id):
     
     return redirect(url_for('feedback.admin_feedback'))
 
-# This will be handled by the main app initialization

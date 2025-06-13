@@ -68,13 +68,15 @@ def request_delivery():
             delivery_address=delivery_address,
             priority=priority,
             special_instructions=special_instructions or None,
-            status='pending'
+            status='pending',
+            payment_status='pending'
         )
         
         db.session.add(mission)
         db.session.commit()
         
-        flash('Delivery request submitted successfully! You will be notified when a clinic accepts your request.', 'success')
+        flash('Delivery request created successfully! Please complete payment to proceed with your medical delivery.', 'success')
+        return redirect(url_for('payment.select_payment', mission_id=mission.id))
         
     except Exception as e:
         db.session.rollback()

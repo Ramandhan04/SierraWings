@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}My Feedback History - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-history me-2"></i>My Feedback History
+                    </h2>
+                    <p class="text-muted mb-0">Track your feedback submissions and responses</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('feedback.feedback_form') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-plus me-2"></i>New Feedback
+                    </a>
+                    <a href="{{ url_for(current_user.role + '.dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback History -->
+    <div class="row">
+        {% for feedback in feedbacks %}
+        <div class="col-12 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0">{{ feedback.subject }}</h6>
+                        <small class="text-muted">
+                            Submitted on {{ feedback.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+                        </small>
+                    </div>
+                    <div>
+                        <span class="badge bg-{{ 'success' if feedback.status == 'resolved' else 'warning' if feedback.status == 'reviewed' else 'secondary' }}">
+                            {{ feedback.status.title() }}
+                        </span>
+                        <span class="badge bg-primary">{{ feedback.category.replace('_', ' ').title() }}</span>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Rating -->
+                    <div class="mb-3">
+                        <strong>Your Rating:</strong>
+                        {% for i in range(feedback.rating) %}
+                            <i class="fas fa-star text-warning"></i>
+                        {% endfor %}
+                        {% for i in range(5 - feedback.rating) %}
+                            <i class="far fa-star text-muted"></i>
+                        {% endfor %}
+                        <span class="text-muted">({{ feedback.rating }}/5)</span>
+                    </div>
+                    
+                    <!-- Your Message -->
+                    <div class="mb-3">
+                        <strong>Your Message:</strong>
+                        <p class="mt-2">{{ feedback.message }}</p>
+                    </div>
+                    
+                    <!-- Admin Response -->
+                    {% if feedback.admin_response %}
+                    <div class="admin-response bg-success bg-opacity-10 border border-success p-3 rounded">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-reply text-success me-2"></i>
+                            <strong class="text-success">Admin Response</strong>
+                            <small class="text-muted ms-auto">{{ feedback.updated_at.strftime('%B %d, %Y at %I:%M %p') }}</small>
+                        </div>
+                        <p class="mb-0">{{ feedback.admin_response }}</p>
+                    </div>
+                    {% else %}
+                    <div class="pending-response bg-light p-3 rounded">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-clock text-muted me-2"></i>
+                            <span class="text-muted">Waiting for admin response...</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if not feedbacks %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Feedback Submitted Yet</h4>
+                <p class="text-muted">You haven't submitted any feedback. Share your thoughts to help us improve!</p>
+                <a href="{{ url_for('feedback.feedback_form') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Submit Your First Feedback
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.admin-response {
+    border-radius: 8px;
+}
+
+.pending-response {
+    border-radius: 8px;
+}
+
+.card {
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-1px);
+}
+</style>
+{% endblock %}

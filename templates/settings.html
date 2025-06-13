@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Account Settings - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-cog me-2"></i>Account Settings
+                    </h2>
+                    <p class="text-muted mb-0">Manage your account preferences and security</p>
+                </div>
+                <a href="{{ url_for(current_user.role + '.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Grid -->
+    <div class="row">
+        <!-- Account Security -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="setting-icon bg-warning text-white mb-3">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <h5 class="card-title">Change Password</h5>
+                    <p class="card-text text-muted">Update your account password for better security</p>
+                    <a href="{{ url_for('auth.change_password') }}" class="btn btn-warning">Change Password</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Two-Factor Authentication -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="setting-icon bg-success text-white mb-3">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h5 class="card-title">Two-Factor Authentication</h5>
+                    <p class="card-text text-muted">
+                        {% if current_user.two_factor_enabled %}
+                            <span class="badge bg-success">Enabled</span>
+                        {% else %}
+                            <span class="badge bg-warning">Disabled</span>
+                        {% endif %}
+                    </p>
+                    {% if current_user.two_factor_enabled %}
+                        <a href="{{ url_for('auth.disable_2fa') }}" class="btn btn-outline-danger">Disable 2FA</a>
+                    {% else %}
+                        <a href="{{ url_for('auth.two_factor_setup') }}" class="btn btn-success">Enable 2FA</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Settings -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="setting-icon bg-primary text-white mb-3">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h5 class="card-title">Profile Information</h5>
+                    <p class="card-text text-muted">Update your personal and contact information</p>
+                    <a href="{{ url_for('auth.edit_profile') }}" class="btn btn-primary">Edit Profile</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Send Feedback -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="setting-icon bg-info text-white mb-3">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h5 class="card-title">Send Feedback</h5>
+                    <p class="card-text text-muted">Share your thoughts and help us improve</p>
+                    <a href="{{ url_for('feedback.feedback_form') }}" class="btn btn-info">Send Feedback</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Privacy & Legal -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="setting-icon bg-secondary text-white mb-3">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <h5 class="card-title">Privacy & Legal</h5>
+                    <p class="card-text text-muted">Review our terms and privacy policy</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('legal.privacy_policy') }}" class="btn btn-outline-secondary btn-sm">Privacy Policy</a>
+                        <a href="{{ url_for('legal.terms_of_service') }}" class="btn btn-outline-secondary btn-sm">Terms of Service</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Activity -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="setting-icon bg-dark text-white mb-3">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h5 class="card-title">Account Activity</h5>
+                    <p class="card-text text-muted">View your recent account activity and sessions</p>
+                    <button class="btn btn-dark" onclick="showAccountActivity()">View Activity</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Information -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Account Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Full Name:</strong></td>
+                                    <td>{{ current_user.full_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Email:</strong></td>
+                                    <td>{{ current_user.email }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Role:</strong></td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ current_user.role.title() }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Phone:</strong></td>
+                                    <td>{{ current_user.phone or 'Not provided' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Member Since:</strong></td>
+                                    <td>{{ current_user.created_at.strftime('%B %d, %Y') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Account Status:</strong></td>
+                                    <td>
+                                        {% if current_user.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>2FA Status:</strong></td>
+                                    <td>
+                                        {% if current_user.two_factor_enabled %}
+                                            <span class="badge bg-success">Enabled</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Disabled</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Last Login:</strong></td>
+                                    <td>{{ moment().format('MMMM DD, YYYY') }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.setting-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    font-size: 24px;
+}
+
+.card {
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+</style>
+
+<script>
+function showAccountActivity() {
+    // This would typically load account activity data
+    alert('Account activity feature coming soon!');
+}
+</script>
+{% endblock %}
