@@ -252,6 +252,39 @@ def get_notifications():
 
 # Production system - telemetry comes from authentic drone hardware only
 
+@bp.route('/missions/<int:mission_id>/start', methods=['POST'])
+@login_required
+def start_mission_api(mission_id):
+    """Start a mission via API"""
+    mission = Mission.query.get_or_404(mission_id)
+    
+    if mission.status != 'accepted':
+        return jsonify({'error': 'Mission must be accepted before starting'}), 400
+    
+    try:
+        # Update mission status
+        mission.status = 'in_flight'
+        mission.started_at = datetime.utcnow()
+        
+        # Assign available drone if not already assigned
+        if not mission.drone:
+            available_drone = Drone.query.filter_by(status='available').first()
+            if available_drone:
+                mission.drone = available_drone
+                available_drone.status = 'in_flight'
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Mission #{mission_id} started successfully',
+            'status': mission.status
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @bp.route('/missions/<int:mission_id>/accept', methods=['POST'])
 @login_required
 def accept_mission_api(mission_id):

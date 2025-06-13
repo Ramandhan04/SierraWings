@@ -1,306 +1,249 @@
 /**
- * SierraWings Notification System
- * Automatic popup notifications for real-time updates
+ * SierraWings Real-time Notification System
+ * Automatically checks for notifications every 5 seconds
  */
 
 class SierraWingsNotifications {
     constructor() {
-        this.notifications = [];
-        this.maxNotifications = 5;
-        this.defaultDuration = 8000; // 8 seconds
-        this.container = null;
-        this.isInitialized = false;
-        this.updateInterval = null;
-        
+        this.isActive = true;
+        this.checkInterval = 5000; // 5 seconds
+        this.shownNotifications = new Set();
         this.init();
     }
-    
+
     init() {
-        if (this.isInitialized) return;
+        // Start automatic notification checking
+        this.startNotificationLoop();
         
-        // Create notification container
+        // Add notification container to page if it doesn't exist
         this.createNotificationContainer();
-        
-        // Request notification permission
-        this.requestPermission();
-        
-        // Start checking for new notifications
-        this.startNotificationUpdates();
-        
-        this.isInitialized = true;
     }
-    
+
     createNotificationContainer() {
-        this.container = document.createElement('div');
-        this.container.id = 'notification-container';
-        this.container.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
-            max-width: 400px;
-            pointer-events: none;
-        `;
-        document.body.appendChild(this.container);
-    }
-    
-    async requestPermission() {
-        if ("Notification" in window) {
-            if (Notification.permission === "default") {
-                const permission = await Notification.requestPermission();
-                if (permission === "granted") {
-                    this.showSuccess("Notifications enabled! You'll receive real-time updates.");
-                }
-            }
+        if (!document.getElementById('notification-container')) {
+            const container = document.createElement('div');
+            container.id = 'notification-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                max-width: 400px;
+                pointer-events: none;
+            `;
+            document.body.appendChild(container);
         }
     }
-    
-    startNotificationUpdates() {
-        // Check for new notifications every 5 seconds
-        this.updateInterval = setInterval(() => {
-            this.checkForNewNotifications();
-        }, 5000);
+
+    async startNotificationLoop() {
+        if (!this.isActive) return;
+
+        try {
+            await this.checkForNotifications();
+        } catch (error) {
+            console.error('Notification check failed:', error);
+        }
+
+        // Schedule next check
+        setTimeout(() => this.startNotificationLoop(), this.checkInterval);
     }
-    
-    async checkForNewNotifications() {
+
+    async checkForNotifications() {
         try {
             const response = await fetch('/api/notifications');
-            if (response.ok) {
-                const notifications = await response.json();
-                
-                notifications.forEach(notification => {
-                    if (!this.hasBeenShown(notification.id)) {
-                        this.showNotification(notification);
-                        this.markAsShown(notification.id);
-                    }
-                });
+            if (!response.ok) return;
+
+            const notifications = await response.json();
+            
+            for (const notification of notifications) {
+                if (!this.shownNotifications.has(notification.id)) {
+                    this.showNotification(notification);
+                    this.shownNotifications.add(notification.id);
+                }
             }
         } catch (error) {
-            console.error('Error checking notifications:', error);
+            // Silent fail - don't spam console in production
         }
     }
-    
-    hasBeenShown(notificationId) {
-        const shown = localStorage.getItem('shown_notifications') || '[]';
-        const shownIds = JSON.parse(shown);
-        return shownIds.includes(notificationId);
-    }
-    
-    markAsShown(notificationId) {
-        const shown = localStorage.getItem('shown_notifications') || '[]';
-        const shownIds = JSON.parse(shown);
-        shownIds.push(notificationId);
-        
-        // Keep only last 100 notifications to prevent localStorage bloat
-        if (shownIds.length > 100) {
-            shownIds.splice(0, shownIds.length - 100);
-        }
-        
-        localStorage.setItem('shown_notifications', JSON.stringify(shownIds));
-    }
-    
+
     showNotification(notification) {
-        // Show in-app notification
-        this.showInApp(notification.message, notification.type, notification.duration);
-        
-        // Show browser notification if permission granted
-        if (Notification.permission === "granted") {
-            this.showBrowserNotification(notification);
-        }
-    }
-    
-    showInApp(message, type = 'info', duration = null) {
-        const notification = this.createNotificationElement(message, type);
-        
-        // Add to container
-        this.container.appendChild(notification);
-        this.notifications.push(notification);
-        
-        // Remove old notifications if exceeding max
-        while (this.notifications.length > this.maxNotifications) {
-            const oldest = this.notifications.shift();
-            if (oldest.parentNode) {
-                oldest.remove();
-            }
-        }
-        
-        // Auto remove after duration
-        const timeout = duration || this.defaultDuration;
-        setTimeout(() => {
-            this.removeNotification(notification);
-        }, timeout);
-        
-        // Animate in
-        setTimeout(() => {
-            notification.classList.add('show');
-        }, 100);
-    }
-    
-    createNotificationElement(message, type) {
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${this.getBootstrapType(type)} alert-dismissible fade notification-item`;
-        notification.style.cssText = `
-            margin-bottom: 10px;
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+
+        const notificationEl = document.createElement('div');
+        notificationEl.className = `alert alert-${this.getAlertClass(notification.type)} alert-dismissible fade show mb-2`;
+        notificationEl.style.cssText = `
             pointer-events: auto;
+            min-width: 300px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             border: none;
-            border-radius: 8px;
-            font-weight: 500;
-            transform: translateX(100%);
-            transition: all 0.3s ease-in-out;
+            animation: slideInRight 0.3s ease-out;
         `;
-        
-        const icon = this.getIcon(type);
-        notification.innerHTML = `
+
+        const icon = this.getNotificationIcon(notification.type);
+        const actionButton = notification.url ? 
+            `<a href="${notification.url}" class="btn btn-outline-light btn-sm ms-2">View</a>` : '';
+
+        notificationEl.innerHTML = `
             <div class="d-flex align-items-center">
                 <i class="${icon} me-2"></i>
-                <div class="flex-grow-1">${message}</div>
-                <button type="button" class="btn-close" onclick="sierraNotifications.removeNotification(this.parentElement.parentElement)"></button>
+                <div class="flex-grow-1">
+                    <div class="fw-bold">${this.getNotificationTitle(notification.type)}</div>
+                    <small>${notification.message}</small>
+                </div>
+                ${actionButton}
+                <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="alert"></button>
             </div>
         `;
-        
-        return notification;
-    }
-    
-    showBrowserNotification(notification) {
-        const options = {
-            body: notification.message,
-            icon: '/static/images/sierrawings-icon.png',
-            badge: '/static/images/sierrawings-badge.png',
-            tag: notification.type,
-            requireInteraction: notification.type === 'emergency',
-            actions: notification.actions || []
-        };
-        
-        const browserNotification = new Notification('SierraWings', options);
-        
-        browserNotification.onclick = function() {
-            window.focus();
-            if (notification.url) {
-                window.location.href = notification.url;
+
+        container.appendChild(notificationEl);
+
+        // Auto-remove after specified duration
+        const duration = notification.duration || 8000;
+        setTimeout(() => {
+            if (notificationEl.parentNode) {
+                notificationEl.classList.add('fade');
+                setTimeout(() => notificationEl.remove(), 150);
             }
-            browserNotification.close();
-        };
-        
-        // Auto close after 10 seconds unless it's an emergency
-        if (notification.type !== 'emergency') {
-            setTimeout(() => {
-                browserNotification.close();
-            }, 10000);
+        }, duration);
+
+        // Play notification sound for emergency alerts
+        if (notification.type === 'emergency') {
+            this.playNotificationSound();
         }
     }
-    
-    removeNotification(element) {
-        if (element && element.parentNode) {
-            element.style.transform = 'translateX(100%)';
-            element.style.opacity = '0';
-            
-            setTimeout(() => {
-                if (element.parentNode) {
-                    element.remove();
-                }
-                
-                const index = this.notifications.indexOf(element);
-                if (index > -1) {
-                    this.notifications.splice(index, 1);
-                }
-            }, 300);
-        }
-    }
-    
-    getBootstrapType(type) {
-        const typeMap = {
-            'success': 'success',
-            'error': 'danger',
-            'warning': 'warning',
-            'info': 'info',
-            'emergency': 'danger',
+
+    getAlertClass(type) {
+        const classes = {
             'mission_update': 'primary',
-            'payment': 'success'
+            'emergency': 'danger',
+            'success': 'success',
+            'payment': 'info',
+            'warning': 'warning',
+            'info': 'info'
         };
-        return typeMap[type] || 'info';
+        return classes[type] || 'info';
     }
-    
-    getIcon(type) {
-        const iconMap = {
-            'success': 'fas fa-check-circle',
-            'error': 'fas fa-exclamation-triangle',
-            'warning': 'fas fa-exclamation-triangle',
-            'info': 'fas fa-info-circle',
-            'emergency': 'fas fa-ambulance',
+
+    getNotificationIcon(type) {
+        const icons = {
             'mission_update': 'fas fa-drone',
-            'payment': 'fas fa-credit-card'
+            'emergency': 'fas fa-exclamation-triangle',
+            'success': 'fas fa-check-circle',
+            'payment': 'fas fa-money-bill-wave',
+            'warning': 'fas fa-exclamation-triangle',
+            'info': 'fas fa-info-circle'
         };
-        return iconMap[type] || 'fas fa-bell';
+        return icons[type] || 'fas fa-bell';
     }
-    
-    // Public methods for manual notifications
-    showSuccess(message, duration = null) {
-        this.showInApp(message, 'success', duration);
+
+    getNotificationTitle(type) {
+        const titles = {
+            'mission_update': 'Mission Update',
+            'emergency': 'Emergency Alert',
+            'success': 'Success',
+            'payment': 'Payment Received',
+            'warning': 'System Warning',
+            'info': 'Information'
+        };
+        return titles[type] || 'Notification';
     }
-    
-    showError(message, duration = null) {
-        this.showInApp(message, 'error', duration);
-    }
-    
-    showWarning(message, duration = null) {
-        this.showInApp(message, 'warning', duration);
-    }
-    
-    showInfo(message, duration = null) {
-        this.showInApp(message, 'info', duration);
-    }
-    
-    showEmergency(message, duration = 15000) {
-        this.showInApp(message, 'emergency', duration);
-        
-        // Also show browser notification for emergencies
-        if (Notification.permission === "granted") {
-            this.showBrowserNotification({
-                message: message,
-                type: 'emergency',
-                duration: duration
-            });
+
+    playNotificationSound() {
+        // Create audio context for emergency notifications
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        } catch (error) {
+            // Silent fail if audio not supported
         }
     }
-    
-    showMissionUpdate(message, duration = null) {
-        this.showInApp(message, 'mission_update', duration);
+
+    pause() {
+        this.isActive = false;
     }
-    
-    showPaymentUpdate(message, duration = null) {
-        this.showInApp(message, 'payment', duration);
-    }
-    
-    // Cleanup
-    destroy() {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-        }
-        
-        if (this.container && this.container.parentNode) {
-            this.container.remove();
-        }
-        
-        this.notifications = [];
-        this.isInitialized = false;
+
+    resume() {
+        this.isActive = true;
+        this.startNotificationLoop();
     }
 }
 
-// Global notification instance
-let sierraNotifications;
-
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    sierraNotifications = new SierraWingsNotifications();
-});
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', function() {
-    if (sierraNotifications) {
-        sierraNotifications.destroy();
+// CSS animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
     }
+    
+    .alert-danger {
+        background: linear-gradient(135deg, #dc3545, #c82333) !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    .alert-primary {
+        background: linear-gradient(135deg, #007bff, #0056b3) !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    .alert-success {
+        background: linear-gradient(135deg, #28a745, #1e7e34) !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    .alert-info {
+        background: linear-gradient(135deg, #17a2b8, #117a8b) !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    .alert-warning {
+        background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+        color: #212529 !important;
+        border: none !important;
+    }
+`;
+document.head.appendChild(style);
+
+// Initialize notifications when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.sierraWingsNotifications = new SierraWingsNotifications();
 });
 
-// Export for use in other scripts
-window.sierraNotifications = sierraNotifications;
+// Global notification helper function
+window.showSierraWingsNotification = function(message, type = 'info', duration = 5000) {
+    const notification = {
+        id: `manual_${Date.now()}`,
+        type: type,
+        message: message,
+        duration: duration
+    };
+    
+    if (window.sierraWingsNotifications) {
+        window.sierraWingsNotifications.showNotification(notification);
+    }
+};

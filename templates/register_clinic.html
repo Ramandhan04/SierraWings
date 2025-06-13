@@ -140,7 +140,29 @@
                             
                             <div class="col-12 mb-3">
                                 <label for="website" class="form-label">Website URL</label>
-                                <input type="url" class="form-control" id="website" name="website" placeholder="https://">
+                                <input type="url" class="form-control" id="website" name="website" placeholder="https://example.com (Optional)">
+                                <div class="form-text">Website field is optional - leave blank if you don't have one</div>
+                            </div>
+                            
+                            <!-- Location Permission Request -->
+                            <div class="col-12 mb-4">
+                                <div class="alert alert-info">
+                                    <h6 class="alert-heading">
+                                        <i class="fas fa-location-arrow me-2"></i>Location Access Permission
+                                    </h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="locationPermission" name="location_permission" required>
+                                        <label class="form-check-label" for="locationPermission">
+                                            I grant SierraWings permission to access my clinic's location for real-time tracking during drone deliveries. This enables live mapping and accurate delivery coordination.
+                                        </label>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="requestLocation()">
+                                    <i class="fas fa-crosshairs me-2"></i>Get Current Location
+                                </button>
+                                <input type="hidden" id="latitude" name="latitude">
+                                <input type="hidden" id="longitude" name="longitude">
+                                <div id="locationStatus" class="mt-2 small text-muted"></div>
                             </div>
                             
                             <!-- Operating Hours -->
@@ -242,32 +264,47 @@ function updateProvince() {
 }
 
 function requestLocation() {
+    const statusDiv = document.getElementById('locationStatus');
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Requesting location access...';
+    
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             function(position) {
-                document.getElementById('latitude').value = position.coords.latitude;
-                document.getElementById('longitude').value = position.coords.longitude;
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
                 
-                showNotification('Location captured successfully!', 'success');
+                document.getElementById('latitude').value = lat;
+                document.getElementById('longitude').value = lon;
+                
+                statusDiv.innerHTML = `<i class="fas fa-check-circle text-success me-1"></i>Location captured: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                showNotification('Location captured successfully! You can now submit the form.', 'success');
             },
             function(error) {
-                let errorMessage = 'Location access denied. ';
+                let errorMessage = 'Location access failed: ';
                 switch(error.code) {
                     case error.PERMISSION_DENIED:
-                        errorMessage += 'Please enable location access in your browser.';
+                        errorMessage += 'Please enable location access in your browser settings.';
                         break;
                     case error.POSITION_UNAVAILABLE:
                         errorMessage += 'Location information is unavailable.';
                         break;
                     case error.TIMEOUT:
-                        errorMessage += 'Location request timed out.';
+                        errorMessage += 'Location request timed out. Please try again.';
                         break;
                 }
+                statusDiv.innerHTML = `<i class="fas fa-exclamation-triangle text-warning me-1"></i>${errorMessage}`;
                 showNotification(errorMessage, 'error');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000
             }
         );
     } else {
-        showNotification('Geolocation is not supported by this browser.', 'error');
+        const errorMsg = 'Geolocation is not supported by this browser.';
+        statusDiv.innerHTML = `<i class="fas fa-times-circle text-danger me-1"></i>${errorMsg}`;
+        showNotification(errorMsg, 'error');
     }
 }
 

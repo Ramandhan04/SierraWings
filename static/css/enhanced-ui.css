@@ -1,0 +1,348 @@
+/* SierraWings Enhanced UI Styles */
+
+/* Brighter, clearer fonts and colors */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-weight: 500;
+    color: #2c3e50;
+    background-color: #f8fafc;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.text-primary {
+    color: #3182ce !important;
+}
+
+.bg-primary {
+    background: linear-gradient(135deg, #3182ce, #2c5aa0) !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3182ce, #2c5aa0);
+    border: none;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(49, 130, 206, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2c5aa0, #2a4d8d);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(49, 130, 206, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #38a169, #2f855a);
+    border: none;
+    font-weight: 600;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #2f855a, #276749);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #e53e3e, #c53030);
+    border: none;
+    font-weight: 600;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #c53030, #9c2626);
+}
+
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    border-radius: 12px 12px 0 0 !important;
+    border: none;
+    font-weight: 600;
+}
+
+.form-control {
+    border-radius: 8px;
+    border: 2px solid #e2e8f0;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #3182ce;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 8px;
+}
+
+.alert {
+    border: none;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.table {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.table th {
+    background: linear-gradient(135deg, #f7fafc, #edf2f7);
+    border: none;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.badge {
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+}
+
+.nav-link {
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #3182ce !important;
+    transform: translateY(-1px);
+}
+
+/* Enhanced notification styles */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 400px;
+}
+
+.notification-item {
+    margin-bottom: 10px;
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Mission status colors */
+.status-pending {
+    background: linear-gradient(135deg, #ed8936, #dd6b20);
+    color: white;
+}
+
+.status-accepted {
+    background: linear-gradient(135deg, #3182ce, #2c5aa0);
+    color: white;
+}
+
+.status-in-flight {
+    background: linear-gradient(135deg, #38a169, #2f855a);
+    color: white;
+}
+
+.status-completed {
+    background: linear-gradient(135deg, #805ad5, #6b46c1);
+    color: white;
+}
+
+.status-cancelled {
+    background: linear-gradient(135deg, #e53e3e, #c53030);
+    color: white;
+}
+
+/* Live tracking map styles */
+.leaflet-popup-content {
+    font-weight: 500;
+    color: #2d3748;
+}
+
+.custom-marker .marker-content {
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    font-weight: 600;
+}
+
+.drone-marker {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Enhanced pricing display */
+.pricing-breakdown {
+    background: linear-gradient(135deg, #f7fafc, #edf2f7);
+    border-radius: 10px;
+    padding: 20px;
+    border: 2px solid #e2e8f0;
+}
+
+.pricing-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.pricing-item:last-child {
+    border-bottom: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #2d3748;
+}
+
+.pricing-total {
+    background: linear-gradient(135deg, #3182ce, #2c5aa0);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+
+/* Payment method icons */
+.payment-method {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.payment-method:hover {
+    border-color: #3182ce;
+    background-color: #f7fafc;
+}
+
+.payment-method.selected {
+    border-color: #3182ce;
+    background: linear-gradient(135deg, #ebf8ff, #bee3f8);
+}
+
+/* Admin dashboard enhancements */
+.stat-card {
+    background: linear-gradient(135deg, #ffffff, #f7fafc);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.stat-label {
+    font-weight: 600;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.875rem;
+}
+
+/* Location permission styling */
+.location-permission {
+    background: linear-gradient(135deg, #ebf8ff, #bee3f8);
+    border: 2px solid #3182ce;
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.location-status {
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-weight: 500;
+}
+
+.location-status.success {
+    background: linear-gradient(135deg, #f0fff4, #c6f6d5);
+    color: #2f855a;
+    border: 1px solid #68d391;
+}
+
+.location-status.error {
+    background: linear-gradient(135deg, #fed7d7, #feb2b2);
+    color: #c53030;
+    border: 1px solid #fc8181;
+}
+
+.location-status.loading {
+    background: linear-gradient(135deg, #fef5e7, #fed7aa);
+    color: #dd6b20;
+    border: 1px solid #f6ad55;
+}
+
+/* Responsive enhancements */
+@media (max-width: 768px) {
+    .notification-container {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+    }
+    
+    .btn {
+        font-size: 0.875rem;
+        padding: 8px 16px;
+    }
+    
+    .card {
+        margin-bottom: 20px;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+}

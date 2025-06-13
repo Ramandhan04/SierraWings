@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Register - SierraWings{% endblock %}
+{% block title %}Patient Registration - SierraWings{% endblock %}
 
 {% block content %}
 <div class="container py-5">
@@ -9,39 +9,13 @@
             <div class="card shadow-lg border-0">
                 <div class="card-header bg-primary text-white text-center">
                     <h3 class="card-title mb-0">
-                        <i class="fas fa-user-plus me-2"></i>Join SierraWings
+                        <i class="fas fa-user-plus me-2"></i>Patient Registration
                     </h3>
-                    <p class="mb-0 mt-2">Emergency Medical Drone Platform</p>
+                    <p class="mb-0 mt-2">Join SierraWings Emergency Medical Platform</p>
                 </div>
                 
                 <div class="card-body p-4">
-                    <form method="POST" id="registrationForm">
-                        <!-- Role Selection -->
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">Account Type <span class="text-danger">*</span></label>
-                            <div class="row">
-                                <div class="col-md-6 mb-2">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="role" id="patient" value="patient" checked onchange="toggleRoleFields()">
-                                        <label class="form-check-label" for="patient">
-                                            <i class="fas fa-user me-2"></i>Patient
-                                            <small class="d-block text-muted">Request emergency medical deliveries</small>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="role" id="clinic" value="clinic" onchange="toggleRoleFields()">
-                                        <label class="form-check-label" for="clinic">
-                                            <i class="fas fa-hospital me-2"></i>Medical Facility
-                                            <small class="d-block text-muted">Provide emergency medical services</small>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Basic Information -->
+                    <form method="POST" id="patientRegistrationForm">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
@@ -75,8 +49,8 @@
                             <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                         </div>
                         
-                        <!-- Location Section for Patients -->
-                        <div id="patientLocationSection" class="mb-4">
+                        <!-- Location Section -->
+                        <div class="mb-4">
                             <h6 class="text-primary mb-3">
                                 <i class="fas fa-map-marker-alt me-2"></i>Location Information
                             </h6>
@@ -104,8 +78,15 @@
                                 <textarea class="form-control" id="address" name="address" rows="2" placeholder="Street address, area, landmark" required></textarea>
                             </div>
                             
-                            <!-- Location Permission Request -->
-                            <div class="location-permission">
+                            <div class="col-md-6 mb-3">
+                                <label for="zip_code" class="form-label">Postal Code</label>
+                                <input type="text" class="form-control" id="zip_code" name="zip_code" placeholder="Optional">
+                            </div>
+                        </div>
+                        
+                        <!-- Location Permission Request -->
+                        <div class="mb-4">
+                            <div class="alert alert-info">
                                 <h6 class="alert-heading">
                                     <i class="fas fa-location-arrow me-2"></i>Location Access Permission
                                 </h6>
@@ -115,24 +96,13 @@
                                         I grant SierraWings permission to access my location for accurate emergency medical deliveries. This enables precise drone navigation and delivery tracking.
                                     </label>
                                 </div>
-                                <button type="button" class="btn btn-outline-primary btn-sm mt-2" onclick="requestLocation()">
-                                    <i class="fas fa-crosshairs me-2"></i>Get Current Location
-                                </button>
-                                <input type="hidden" id="latitude" name="latitude">
-                                <input type="hidden" id="longitude" name="longitude">
-                                <div id="locationStatus" class="location-status mt-2" style="display: none;"></div>
                             </div>
-                        </div>
-                        
-                        <!-- Clinic Notice -->
-                        <div id="clinicNotice" class="alert alert-info" style="display: none;">
-                            <h6><i class="fas fa-info-circle me-2"></i>Medical Facility Registration</h6>
-                            <p class="mb-2">After creating your account, you'll be redirected to complete your clinic profile with:</p>
-                            <ul class="mb-0">
-                                <li>Medical license verification</li>
-                                <li>Facility location and specialties</li>
-                                <li>Operating hours and emergency contact</li>
-                            </ul>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="requestLocation()">
+                                <i class="fas fa-crosshairs me-2"></i>Get Current Location
+                            </button>
+                            <input type="hidden" id="latitude" name="latitude">
+                            <input type="hidden" id="longitude" name="longitude">
+                            <div id="locationStatus" class="mt-2 small text-muted"></div>
                         </div>
                         
                         <div class="mb-4">
@@ -145,7 +115,7 @@
                         </div>
                         
                         <button type="submit" class="btn btn-primary btn-lg w-100">
-                            <i class="fas fa-user-plus me-2"></i>Create Account
+                            <i class="fas fa-user-plus me-2"></i>Register as Patient
                         </button>
                     </form>
                     
@@ -159,36 +129,6 @@
 </div>
 
 <script>
-function toggleRoleFields() {
-    const patientSelected = document.getElementById('patient').checked;
-    const patientSection = document.getElementById('patientLocationSection');
-    const clinicNotice = document.getElementById('clinicNotice');
-    const locationPermission = document.getElementById('locationPermission');
-    const city = document.getElementById('city');
-    const state = document.getElementById('state');
-    const address = document.getElementById('address');
-    
-    if (patientSelected) {
-        patientSection.style.display = 'block';
-        clinicNotice.style.display = 'none';
-        
-        // Make fields required for patients
-        locationPermission.required = true;
-        city.required = true;
-        state.required = true;
-        address.required = true;
-    } else {
-        patientSection.style.display = 'none';
-        clinicNotice.style.display = 'block';
-        
-        // Remove requirements for clinic registration
-        locationPermission.required = false;
-        city.required = false;
-        state.required = false;
-        address.required = false;
-    }
-}
-
 function updateProvince() {
     const citySelect = document.getElementById('city');
     const stateInput = document.getElementById('state');
@@ -210,8 +150,6 @@ function updateProvince() {
 
 function requestLocation() {
     const statusDiv = document.getElementById('locationStatus');
-    statusDiv.style.display = 'block';
-    statusDiv.className = 'location-status loading mt-2';
     statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Requesting location access...';
     
     if ("geolocation" in navigator) {
@@ -223,12 +161,8 @@ function requestLocation() {
                 document.getElementById('latitude').value = lat;
                 document.getElementById('longitude').value = lon;
                 
-                statusDiv.className = 'location-status success mt-2';
-                statusDiv.innerHTML = `<i class="fas fa-check-circle me-1"></i>Location captured: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-                
-                if (window.showSierraWingsNotification) {
-                    showSierraWingsNotification('Location captured successfully! You can now register.', 'success');
-                }
+                statusDiv.innerHTML = `<i class="fas fa-check-circle text-success me-1"></i>Location captured: ${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+                showSierraWingsNotification('Location captured successfully! You can now register.', 'success');
             },
             function(error) {
                 let errorMessage = 'Location access failed: ';
@@ -243,12 +177,8 @@ function requestLocation() {
                         errorMessage += 'Location request timed out. Please try again.';
                         break;
                 }
-                statusDiv.className = 'location-status error mt-2';
-                statusDiv.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i>${errorMessage}`;
-                
-                if (window.showSierraWingsNotification) {
-                    showSierraWingsNotification(errorMessage, 'error');
-                }
+                statusDiv.innerHTML = `<i class="fas fa-exclamation-triangle text-warning me-1"></i>${errorMessage}`;
+                showSierraWingsNotification(errorMessage, 'error');
             },
             {
                 enableHighAccuracy: true,
@@ -258,44 +188,28 @@ function requestLocation() {
         );
     } else {
         const errorMsg = 'Geolocation is not supported by this browser.';
-        statusDiv.className = 'location-status error mt-2';
-        statusDiv.innerHTML = `<i class="fas fa-times-circle me-1"></i>${errorMsg}`;
-        
-        if (window.showSierraWingsNotification) {
-            showSierraWingsNotification(errorMsg, 'error');
-        }
+        statusDiv.innerHTML = `<i class="fas fa-times-circle text-danger me-1"></i>${errorMsg}`;
+        showSierraWingsNotification(errorMsg, 'error');
     }
 }
 
 // Form validation
-document.getElementById('registrationForm').addEventListener('submit', function(e) {
+document.getElementById('patientRegistrationForm').addEventListener('submit', function(e) {
     const password = document.getElementById('password').value;
     const confirmPassword = document.getElementById('confirm_password').value;
     
     if (password !== confirmPassword) {
         e.preventDefault();
-        if (window.showSierraWingsNotification) {
-            showSierraWingsNotification('Passwords do not match!', 'error');
-        }
+        showSierraWingsNotification('Passwords do not match!', 'error');
         return;
     }
     
-    const patientSelected = document.getElementById('patient').checked;
-    if (patientSelected) {
-        const locationPermission = document.getElementById('locationPermission').checked;
-        if (!locationPermission) {
-            e.preventDefault();
-            if (window.showSierraWingsNotification) {
-                showSierraWingsNotification('Please grant location access permission to register as a patient.', 'error');
-            }
-            return;
-        }
+    const locationPermission = document.getElementById('locationPermission').checked;
+    if (!locationPermission) {
+        e.preventDefault();
+        showSierraWingsNotification('Please grant location access permission to register.', 'error');
+        return;
     }
-});
-
-// Initialize form
-document.addEventListener('DOMContentLoaded', function() {
-    toggleRoleFields();
 });
 </script>
 {% endblock %}
