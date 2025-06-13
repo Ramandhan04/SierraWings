@@ -70,6 +70,12 @@
                         <div class="mb-3">
                             <label for="deliveryAddress" class="form-label fw-bold">Delivery Address <span class="text-danger">*</span></label>
                             <textarea class="form-control" id="deliveryAddress" name="delivery_address" rows="2" placeholder="Exact delivery location with landmarks..." required></textarea>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="captureEmergencyLocation()">
+                                    <i class="fas fa-crosshairs me-1"></i>Use My Current Location
+                                </button>
+                                <div id="emergencyLocationStatus" class="mt-2"></div>
+                            </div>
                         </div>
                         
                         <div class="mb-4">
@@ -268,6 +274,82 @@ function setupEmergencyForm() {
     });
 }
 
+// Capture emergency location
+function captureEmergencyLocation() {
+    const addressInput = document.getElementById('deliveryAddress');
+    const statusDiv = document.getElementById('emergencyLocationStatus');
+    const button = event.target;
+    
+    // Show loading state
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Getting Location...';
+    statusDiv.innerHTML = '<div class="text-info"><i class="fas fa-spinner fa-spin me-1"></i>Accessing GPS...</div>';
+    
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+                
+                // Create detailed address with coordinates
+                const locationText = `Emergency Location: ${lat.toFixed(6)}, ${lon.toFixed(6)} (GPS: ±${Math.round(accuracy)}m accuracy)`;
+                addressInput.value = locationText;
+                
+                statusDiv.innerHTML = `
+                    <div class="text-success">
+                        <i class="fas fa-check-circle me-1"></i>
+                        Emergency location captured with high precision!
+                    </div>
+                `;
+                
+                // Update button
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-check me-1"></i>Location Captured';
+                button.classList.remove('btn-outline-primary');
+                button.classList.add('btn-success');
+                
+                showSierraWingsNotification('Emergency location captured for precise delivery!', 'success');
+            },
+            function(error) {
+                let errorMessage = 'Emergency location failed: ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Location access required for emergency delivery.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'GPS unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Location timeout.';
+                        break;
+                    default:
+                        errorMessage += 'Unknown error.';
+                        break;
+                }
+                
+                statusDiv.innerHTML = `<div class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>${errorMessage}</div>`;
+                
+                // Reset button
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-crosshairs me-1"></i>Try Again';
+                
+                showSierraWingsNotification(errorMessage, 'error');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    } else {
+        statusDiv.innerHTML = '<div class="text-danger"><i class="fas fa-times me-1"></i>GPS not supported.</div>';
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-times me-1"></i>Not Supported';
+        showSierraWingsNotification('GPS not supported by browser.', 'error');
+    }
+}
+
 // Submit emergency request
 async function submitEmergencyRequest() {
     const form = document.getElementById('emergencyRequestForm');
@@ -289,7 +371,7 @@ async function submitEmergencyRequest() {
             const result = await response.json();
             
             // Show success notification
-            showSierraWingsNotification('Emergency request submitted successfully! You will be contacted shortly.', 'success', 10000);
+            showSierraWingsNotification('Emergency request submitted successfully! You will be contacted shortly.', 'success');
             
             // Reset form
             form.reset();

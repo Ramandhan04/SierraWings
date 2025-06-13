@@ -23,28 +23,86 @@ def admin_required(f):
 def dashboard():
     # Get system statistics
     total_users = User.query.count()
-    total_drones = Drone.query.count()
     total_missions = Mission.query.count()
-    active_missions = Mission.query.filter_by(status='in_flight').count()
+    active_drones = Drone.query.filter_by(status='available').count()
+    total_drones = Drone.query.count()
     
-    # Get recent activity
+    # Get payment statistics
+    try:
+        from models_payment import PaymentTransaction
+        total_transactions = PaymentTransaction.query.count()
+        total_revenue = db.session.query(db.func.sum(PaymentTransaction.total_amount)).scalar() or 0
+        admin_fees_earned = db.session.query(db.func.sum(PaymentTransaction.admin_fee_amount)).scalar() or 0
+        pending_payments = PaymentTransaction.query.filter_by(status='pending').count()
+        completed_payments = PaymentTransaction.query.filter_by(status='completed').count()
+        
+        # Recent transactions
+        recent_transactions = PaymentTransaction.query.order_by(PaymentTransaction.payment_date.desc()).limit(10).all()
+        
+        # Daily revenue for last 7 days
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        daily_revenue = db.session.query(
+            db.func.date(PaymentTransaction.payment_date).label('date'),
+            db.func.sum(PaymentTransaction.total_amount).label('revenue'),
+            db.func.sum(PaymentTransaction.admin_fee_amount).label('admin_fees')
+        ).filter(
+            PaymentTransaction.payment_date >= seven_days_ago,
+            PaymentTransaction.status == 'completed'
+        ).group_by(db.func.date(PaymentTransaction.payment_date)).all()
+        
+    except Exception:
+        total_transactions = 0
+        total_revenue = 0
+        admin_fees_earned = 0
+        pending_payments = 0
+        completed_payments = 0
+        recent_transactions = []
+        daily_revenue = []
+    
+    # Get recent missions
     recent_missions = Mission.query.order_by(Mission.created_at.desc()).limit(10).all()
     recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
     
-    # Get mission statistics
-    missions_by_status = db.session.query(
-        Mission.status, 
+    # Get mission statistics by status
+    mission_stats = db.session.query(
+        Mission.status,
         db.func.count(Mission.id)
     ).group_by(Mission.status).all()
     
+    mission_status_data = {status: count for status, count in mission_stats}
+    
+    # Get user statistics by role
+    user_stats = db.session.query(
+        User.role,
+        db.func.count(User.id)
+    ).group_by(User.role).all()
+    
+    user_role_data = {role: count for role, count in user_stats}
+    
+    # Get clinic statistics
+    total_clinics = ClinicProfile.query.count()
+    verified_clinics = ClinicProfile.query.filter_by(is_verified=True).count()
+    pending_clinics = ClinicProfile.query.filter_by(is_verified=False).count()
+    
     return render_template('admin.html',
                          total_users=total_users,
-                         total_drones=total_drones,
                          total_missions=total_missions,
-                         active_missions=active_missions,
+                         active_drones=active_drones,
+                         total_drones=total_drones,
+                         total_transactions=total_transactions,
+                         total_revenue=total_revenue,
+                         admin_fees_earned=admin_fees_earned,
+                         pending_payments=pending_payments,
+                         completed_payments=completed_payments,
                          recent_missions=recent_missions,
                          recent_users=recent_users,
-                         missions_by_status=missions_by_status)
+                         recent_transactions=recent_transactions,
+                         mission_status_data=mission_status_data,
+                         user_role_data=user_role_data,
+                         daily_revenue=daily_revenue,
+                         total_clinics=total_clinics,
+                         verified_clinics=verified_clinics,
+                         pending_clinics=pending_clinics)
 
 @bp.route('/users')
 @login_required

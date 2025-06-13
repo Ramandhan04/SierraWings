@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+{% set active_page = "admin_transactions" %}
+
+{% block title %}Payment Transactions - Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold text-primary mb-1">
+                        <i class="fas fa-credit-card me-2"></i>Payment Transactions
+                    </h2>
+                    <p class="text-muted mb-0">Complete transaction history and financial analytics</p>
+                </div>
+                <div>
+                    <button class="btn btn-success" onclick="exportTransactions()">
+                        <i class="fas fa-download me-2"></i>Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Financial Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card dashboard-card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-white-50">Total Revenue</h6>
+                            <h3 class="mb-0">{{ "%.2f"|format(total_amount) }} NLE</h3>
+                        </div>
+                        <div class="text-white-50">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card dashboard-card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-white-50">Admin Fees Earned</h6>
+                            <h3 class="mb-0">{{ "%.2f"|format(total_admin_fees) }} NLE</h3>
+                        </div>
+                        <div class="text-white-50">
+                            <i class="fas fa-percentage fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card dashboard-card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-white-50">Net to Clinics</h6>
+                            <h3 class="mb-0">{{ "%.2f"|format(total_net) }} NLE</h3>
+                        </div>
+                        <div class="text-white-50">
+                            <i class="fas fa-hospital fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card dashboard-card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title text-white-50">Total Transactions</h6>
+                            <h3 class="mb-0">{{ transactions|length }}</h3>
+                        </div>
+                        <div class="text-white-50">
+                            <i class="fas fa-receipt fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Method Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>Payment Methods
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if payment_method_stats %}
+                        <canvas id="paymentMethodChart" width="400" height="200"></canvas>
+                    {% else %}
+                        <p class="text-muted text-center py-4">No transaction data available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-mobile-alt me-2"></i>Payment Method Breakdown
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for method, count, total in payment_method_stats %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <strong>{{ method|title }}</strong>
+                                <small class="text-muted d-block">{{ count }} transactions</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="fw-bold">{{ "%.2f"|format(total) }} NLE</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-filter me-2"></i>Transaction Filters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-2">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Statuses</option>
+                                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                                <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+                                <option value="refunded" {% if status_filter == 'refunded' %}selected{% endif %}>Refunded</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="payment_method" class="form-label">Payment Method</label>
+                            <select class="form-select" id="payment_method" name="payment_method">
+                                <option value="">All Methods</option>
+                                <option value="africanmoney" {% if payment_method_filter == 'africanmoney' %}selected{% endif %}>African Money</option>
+                                <option value="orangemoney" {% if payment_method_filter == 'orangemoney' %}selected{% endif %}>Orange Money</option>
+                                <option value="qmoney" {% if payment_method_filter == 'qmoney' %}selected{% endif %}>QMoney</option>
+                                <option value="card" {% if payment_method_filter == 'card' %}selected{% endif %}>Card</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="date_from" class="form-label">From Date</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label for="date_to" class="form-label">To Date</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search me-1"></i>Filter
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <a href="{{ url_for('admin.view_transactions') }}" class="btn btn-outline-secondary">
+                                    <i class="fas fa-times me-1"></i>Clear
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transactions Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-table me-2"></i>Transaction History
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if transactions %}
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Transaction ID</th>
+                                        <th>Mission</th>
+                                        <th>User</th>
+                                        <th>Amount</th>
+                                        <th>Admin Fee</th>
+                                        <th>Payment Method</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in transactions %}
+                                    <tr>
+                                        <td>
+                                            <code class="small">{{ transaction.transaction_id }}</code>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('admin.mission_details', mission_id=transaction.mission_id) }}" class="text-decoration-none">
+                                                Mission #{{ transaction.mission_id }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            {{ transaction.user.full_name if transaction.user else 'Unknown' }}
+                                            <small class="text-muted d-block">{{ transaction.user.email if transaction.user else '' }}</small>
+                                        </td>
+                                        <td>
+                                            <strong>{{ "%.2f"|format(transaction.total_amount) }} NLE</strong>
+                                        </td>
+                                        <td>
+                                            <span class="text-success">{{ "%.2f"|format(transaction.admin_fee_amount) }} NLE</span>
+                                            <small class="text-muted d-block">({{ "%.1f"|format(transaction.admin_percentage) }}%)</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ transaction.payment_method|title }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if transaction.status == 'completed' else 'warning' if transaction.status == 'pending' else 'danger' }}">
+                                                {{ transaction.status|title }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {{ transaction.payment_date.strftime('%Y-%m-%d %H:%M') }}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" onclick="viewTransactionDetails({{ transaction.id }})">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                {% if transaction.status == 'completed' and not transaction.is_withdrawn %}
+                                                    <button class="btn btn-outline-success" onclick="processWithdrawal({{ transaction.id }})">
+                                                        <i class="fas fa-money-bill-wave"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No transactions found</h5>
+                            <p class="text-muted">No payment transactions match your current filters</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Details Modal -->
+<div class="modal fade" id="transactionDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Transaction Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="transactionDetailsContent">
+                <!-- Content loaded via JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Payment Method Chart
+{% if payment_method_stats %}
+const ctx = document.getElementById('paymentMethodChart').getContext('2d');
+new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        labels: [{% for method, count, total in payment_method_stats %}'{{ method|title }}'{{ ', ' if not loop.last }}{% endfor %}],
+        datasets: [{
+            data: [{% for method, count, total in payment_method_stats %}{{ total }}{{ ', ' if not loop.last }}{% endfor %}],
+            backgroundColor: [
+                '#3498db',
+                '#2ecc71',
+                '#f39c12',
+                '#e74c3c',
+                '#9b59b6',
+                '#1abc9c'
+            ],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ' + context.parsed.toFixed(2) + ' NLE';
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+
+// View transaction details
+function viewTransactionDetails(transactionId) {
+    fetch(`/admin/transaction/${transactionId}/details`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('transactionDetailsContent').innerHTML = data.html;
+            new bootstrap.Modal(document.getElementById('transactionDetailsModal')).show();
+        })
+        .catch(error => {
+            showSierraWingsNotification('Failed to load transaction details', 'error');
+        });
+}
+
+// Process withdrawal
+function processWithdrawal(transactionId) {
+    if (confirm('Process withdrawal for this transaction?')) {
+        fetch(`/admin/transaction/${transactionId}/withdraw`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showSierraWingsNotification('Withdrawal processed successfully', 'success');
+                location.reload();
+            } else {
+                showSierraWingsNotification(data.error || 'Failed to process withdrawal', 'error');
+            }
+        })
+        .catch(error => {
+            showSierraWingsNotification('Failed to process withdrawal', 'error');
+        });
+    }
+}
+
+// Export transactions
+function exportTransactions() {
+    const params = new URLSearchParams(window.location.search);
+    window.open(`/admin/transactions/export?${params.toString()}`, '_blank');
+}
+</script>
+
+<style>
+.dashboard-card {
+    transition: all 0.3s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.table th {
+    font-weight: 600;
+    border-top: none;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+code {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+</style>
+{% endblock %}

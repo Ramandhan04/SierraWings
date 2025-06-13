@@ -101,8 +101,8 @@ class SierraWingsNotifications {
 
         container.appendChild(notificationEl);
 
-        // Auto-remove after specified duration
-        const duration = notification.duration || 8000;
+        // Auto-remove after 10 seconds
+        const duration = 10000;
         setTimeout(() => {
             if (notificationEl.parentNode) {
                 notificationEl.classList.add('fade');
