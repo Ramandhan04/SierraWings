@@ -221,5 +221,73 @@ document.getElementById('clinicRegistrationForm').addEventListener('submit', fun
     const button = e.target.querySelector('button[type="submit"]');
     addLoadingState(button);
 });
+
+function updateProvince() {
+    const citySelect = document.getElementById('city');
+    const stateInput = document.getElementById('state');
+    
+    const cityProvinceMap = {
+        'Freetown': 'Western Province',
+        'Bo': 'Southern Province',
+        'Kenema': 'Eastern Province',
+        'Makeni': 'Northern Province'
+    };
+    
+    const selectedCity = citySelect.value;
+    if (selectedCity && cityProvinceMap[selectedCity]) {
+        stateInput.value = cityProvinceMap[selectedCity];
+    } else {
+        stateInput.value = '';
+    }
+}
+
+function requestLocation() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                document.getElementById('latitude').value = position.coords.latitude;
+                document.getElementById('longitude').value = position.coords.longitude;
+                
+                showNotification('Location captured successfully!', 'success');
+            },
+            function(error) {
+                let errorMessage = 'Location access denied. ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Please enable location access in your browser.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'Location information is unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Location request timed out.';
+                        break;
+                }
+                showNotification(errorMessage, 'error');
+            }
+        );
+    } else {
+        showNotification('Geolocation is not supported by this browser.', 'error');
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
 </script>
 {% endblock %}

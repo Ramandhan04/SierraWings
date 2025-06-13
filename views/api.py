@@ -160,7 +160,7 @@ def get_notifications():
     if current_user.role == 'patient':
         # Check for mission status updates
         recent_missions = Mission.query.filter_by(user_id=current_user.id).filter(
-            Mission.updated_at > datetime.utcnow() - timedelta(minutes=5)
+            Mission.created_at > datetime.utcnow() - timedelta(minutes=5)
         ).all()
         
         for mission in recent_missions:
