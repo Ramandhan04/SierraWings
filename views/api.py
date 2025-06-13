@@ -42,6 +42,214 @@ def get_telemetry():
         
         return jsonify(telemetry_data)
 
+@bp.route('/active-missions')
+@login_required
+def get_active_missions():
+    """Get active missions for real-time tracking"""
+    missions = Mission.query.filter(
+        Mission.status.in_(['accepted', 'in_flight', 'dispatched'])
+    ).order_by(Mission.created_at.desc()).all()
+    
+    active_missions = []
+    for mission in missions:
+        mission_data = {
+            'id': mission.id,
+            'user_name': mission.user.full_name,
+            'user_email': mission.user.email,
+            'payload_type': mission.payload_type,
+            'payload_weight': mission.payload_weight,
+            'status': mission.status,
+            'pickup_address': mission.pickup_address,
+            'delivery_address': mission.delivery_address,
+            'pickup_lat': mission.pickup_lat,
+            'pickup_lon': mission.pickup_lon,
+            'delivery_lat': mission.delivery_lat,
+            'delivery_lon': mission.delivery_lon,
+            'created_at': mission.created_at.isoformat() if mission.created_at else None
+        }
+        active_missions.append(mission_data)
+    
+    return jsonify(active_missions)
+
+@bp.route('/mission/<int:mission_id>/tracking')
+@login_required
+def get_mission_tracking(mission_id):
+    """Get tracking data for a specific mission"""
+    mission = Mission.query.get_or_404(mission_id)
+    
+    # Get latest telemetry data
+    latest_telemetry = None
+    if mission.drone:
+        latest_telemetry = TelemetryLog.query.filter_by(
+            mission_id=mission_id
+        ).order_by(TelemetryLog.timestamp.desc()).first()
+    
+    tracking_data = {
+        'id': mission.id,
+        'user_name': mission.user.full_name,
+        'status': mission.status,
+        'payload_type': mission.payload_type,
+        'pickup_address': mission.pickup_address,
+        'delivery_address': mission.delivery_address,
+        'pickup_lat': mission.pickup_lat,
+        'pickup_lon': mission.pickup_lon,
+        'delivery_lat': mission.delivery_lat,
+        'delivery_lon': mission.delivery_lon,
+        'drone_name': mission.drone.name if mission.drone else None,
+        'drone_lat': latest_telemetry.latitude if latest_telemetry else None,
+        'drone_lon': latest_telemetry.longitude if latest_telemetry else None,
+        'battery_level': latest_telemetry.battery_level if latest_telemetry else None,
+        'speed': latest_telemetry.speed if latest_telemetry else None,
+        'altitude': latest_telemetry.altitude if latest_telemetry else None,
+        'route_points': []
+    }
+    
+    # Get route points for tracking line
+    if mission.drone:
+        telemetry_points = TelemetryLog.query.filter_by(
+            mission_id=mission_id
+        ).order_by(TelemetryLog.timestamp.asc()).all()
+        
+        tracking_data['route_points'] = [
+            [log.latitude, log.longitude] for log in telemetry_points
+            if log.latitude and log.longitude
+        ]
+    
+    return jsonify(tracking_data)
+
+@bp.route('/mission/<int:mission_id>/drone-position')
+@login_required
+def get_drone_position(mission_id):
+    """Get current drone position for a mission"""
+    mission = Mission.query.get_or_404(mission_id)
+    
+    if not mission.drone:
+        return jsonify({'error': 'No drone assigned to this mission'}), 404
+    
+    # Get latest telemetry
+    latest_telemetry = TelemetryLog.query.filter_by(
+        mission_id=mission_id
+    ).order_by(TelemetryLog.timestamp.desc()).first()
+    
+    if not latest_telemetry:
+        return jsonify({'error': 'No telemetry data available'}), 404
+    
+    position_data = {
+        'lat': latest_telemetry.latitude,
+        'lon': latest_telemetry.longitude,
+        'altitude': latest_telemetry.altitude,
+        'heading': latest_telemetry.heading,
+        'speed': latest_telemetry.speed,
+        'battery_level': latest_telemetry.battery_level,
+        'signal_strength': latest_telemetry.signal_strength,
+        'drone_name': mission.drone.name,
+        'timestamp': latest_telemetry.timestamp.isoformat()
+    }
+    
+    return jsonify(position_data)
+
+@bp.route('/notifications')
+@login_required
+def get_notifications():
+    """Get real-time notifications for current user"""
+    from datetime import datetime, timedelta
+    
+    notifications = []
+    
+    # Check for mission updates
+    if current_user.role == 'patient':
+        # Check for mission status updates
+        recent_missions = Mission.query.filter_by(user_id=current_user.id).filter(
+            Mission.updated_at > datetime.utcnow() - timedelta(minutes=5)
+        ).all()
+        
+        for mission in recent_missions:
+            if mission.status == 'accepted':
+                notifications.append({
+                    'id': f'mission_{mission.id}_accepted',
+                    'type': 'mission_update',
+                    'message': f'Your delivery request #{mission.id} has been accepted by a clinic!',
+                    'url': f'/patient/track/{mission.id}',
+                    'duration': 10000
+                })
+            elif mission.status == 'in_flight':
+                notifications.append({
+                    'id': f'mission_{mission.id}_in_flight',
+                    'type': 'mission_update',
+                    'message': f'Your medical delivery #{mission.id} is now in transit!',
+                    'url': f'/patient/track/{mission.id}',
+                    'duration': 8000
+                })
+            elif mission.status == 'completed':
+                notifications.append({
+                    'id': f'mission_{mission.id}_completed',
+                    'type': 'success',
+                    'message': f'Your medical delivery #{mission.id} has been completed successfully!',
+                    'url': f'/patient/track/{mission.id}',
+                    'duration': 12000
+                })
+    
+    elif current_user.role == 'clinic':
+        # Check for new mission requests
+        pending_missions = Mission.query.filter_by(status='pending').filter(
+            Mission.created_at > datetime.utcnow() - timedelta(minutes=5)
+        ).all()
+        
+        for mission in pending_missions:
+            notifications.append({
+                'id': f'new_mission_{mission.id}',
+                'type': 'mission_update',
+                'message': f'New emergency delivery request: {mission.payload_type} - {mission.payload_weight}kg',
+                'url': '/clinic/dashboard',
+                'duration': 15000
+            })
+        
+        # Check for urgent/emergency missions
+        emergency_missions = Mission.query.filter_by(
+            status='pending', 
+            priority='emergency'
+        ).filter(
+            Mission.created_at > datetime.utcnow() - timedelta(minutes=10)
+        ).all()
+        
+        for mission in emergency_missions:
+            notifications.append({
+                'id': f'emergency_{mission.id}',
+                'type': 'emergency',
+                'message': f'🚨 EMERGENCY: Urgent medical delivery needed - {mission.payload_type}',
+                'url': '/clinic/dashboard',
+                'duration': 20000
+            })
+    
+    elif current_user.role == 'admin':
+        # Check for payment notifications
+        from models_payment import PaymentTransaction
+        recent_payments = PaymentTransaction.query.filter_by(status='completed').filter(
+            PaymentTransaction.payment_date > datetime.utcnow() - timedelta(minutes=5)
+        ).all()
+        
+        for payment in recent_payments:
+            notifications.append({
+                'id': f'payment_{payment.id}',
+                'type': 'payment',
+                'message': f'New payment received: {payment.total_amount:.2f} NLE (Mission #{payment.mission_id})',
+                'url': '/admin/payment-management',
+                'duration': 8000
+            })
+        
+        # Check for system alerts
+        low_battery_drones = Drone.query.filter(Drone.battery_level < 20).all()
+        for drone in low_battery_drones:
+            notifications.append({
+                'id': f'low_battery_{drone.id}',
+                'type': 'warning',
+                'message': f'Drone {drone.name} has low battery: {drone.battery_level}%',
+                'url': '/admin/manage-drones',
+                'duration': 10000
+            })
+    
+    return jsonify(notifications)
+
 # Production system - telemetry comes from authentic drone hardware only
 
 @bp.route('/missions/<int:mission_id>/accept', methods=['POST'])

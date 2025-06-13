@@ -128,32 +128,53 @@ def toggle_user_status(user_id):
 @login_required
 @admin_required
 def delete_user(user_id):
-    if user_id == current_user.id:
-        flash('You cannot delete your own account.', 'error')
-        return redirect(url_for('admin.manage_users'))
-    
     user = User.query.get(user_id)
     if not user:
         flash('User not found.', 'error')
         return redirect(url_for('admin.manage_users'))
     
+    if user.role == 'admin':
+        flash('Cannot delete admin users.', 'error')
+        return redirect(url_for('admin.manage_users'))
+    
+    if user.id == current_user.id:
+        flash('Cannot delete your own account.', 'error')
+        return redirect(url_for('admin.manage_users'))
+    
     try:
-        # Check if user has active missions
-        active_missions = Mission.query.filter(
-            Mission.user_id == user_id,
-            Mission.status.in_(['pending', 'accepted', 'in_flight'])
-        ).count()
+        # Delete user and all related data (cascading delete)
+        # This will also delete missions, payment transactions, etc.
+        user_name = user.full_name
         
-        if active_missions > 0:
-            flash('Cannot delete user with active missions.', 'error')
-            return redirect(url_for('admin.manage_users'))
+        # Handle clinic profile if exists
+        if hasattr(user, 'clinic_profile') and user.clinic_profile:
+            db.session.delete(user.clinic_profile)
         
+        # Handle payment transactions
+        if hasattr(user, 'payment_transactions'):
+            for transaction in user.payment_transactions:
+                db.session.delete(transaction)
+        
+        # Handle missions
+        for mission in user.missions:
+            # Delete related telemetry logs
+            for telemetry in mission.telemetry_logs:
+                db.session.delete(telemetry)
+            db.session.delete(mission)
+        
+        # Handle feedback
+        if hasattr(user, 'feedbacks'):
+            for feedback in user.feedbacks:
+                db.session.delete(feedback)
+        
+        # Delete the user
         db.session.delete(user)
         db.session.commit()
-        flash('User deleted successfully.', 'success')
+        
+        flash(f'User {user_name} and all associated data deleted successfully.', 'success')
     except Exception as e:
         db.session.rollback()
-        flash('An error occurred while deleting the user.', 'error')
+        flash(f'An error occurred while deleting the user: {str(e)}', 'error')
     
     return redirect(url_for('admin.manage_users'))
 

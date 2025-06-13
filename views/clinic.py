@@ -180,10 +180,12 @@ def complete_mission(mission_id):
 @login_required
 @clinic_required
 def live_operations():
-    # Get all in-flight missions with their telemetry data
-    in_flight_missions = Mission.query.filter_by(status='in_flight').all()
+    # Get active missions for this clinic
+    missions = Mission.query.filter(
+        Mission.status.in_(['accepted', 'in_flight', 'dispatched'])
+    ).order_by(Mission.created_at.desc()).all()
     
-    return render_template('live_operations.html', missions=in_flight_missions)
+    return render_template('live_tracking.html', missions=missions)
 
 @bp.route('/register-clinic', methods=['GET', 'POST'])
 @login_required
@@ -233,8 +235,8 @@ def register_clinic():
                 'emergency_24_7': request.form.get('emergency_24_7') == 'on'
             }
             
-            # Validate required fields
-            if not all([clinic_name, license_number, address, city, state, zip_code]):
+            # Validate required fields (zip_code is now optional)
+            if not all([clinic_name, license_number, address, city, state]):
                 flash('Please fill in all required fields.', 'error')
                 return render_template('register_clinic.html')
             
@@ -253,9 +255,11 @@ def register_clinic():
                 description=description,
                 address=address,
                 city=city,
-                region=request.form.get('region'),
+                region='',  # Not used in simplified system
                 state=state,
                 zip_code=zip_code,
+                latitude=float(latitude) if latitude else None,
+                longitude=float(longitude) if longitude else None,
                 service_radius=service_radius,
                 operating_hours=json.dumps(operating_hours),
                 emergency_contact=emergency_contact,
