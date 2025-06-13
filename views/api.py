@@ -314,17 +314,17 @@ def emergency_request():
         total_cost = base_fee + priority_surcharge + weight_cost
         
         # Create emergency mission
-        mission = Mission(
-            user_id=current_user.id,
-            payload_type=f"EMERGENCY: {emergency_type}",
-            payload_weight=weight,
-            pickup_address="Emergency Medical Facility",
-            delivery_address=delivery_address,
-            priority='emergency',
-            status='pending',
-            notes=f"Emergency Request - Patient: {patient_name}, Contact: {contact_number}, Description: {description}",
-            special_instructions="EMERGENCY DELIVERY - HIGHEST PRIORITY"
-        )
+        from models import Mission
+        mission = Mission()
+        mission.user_id = current_user.id
+        mission.payload_type = f"EMERGENCY: {emergency_type}"
+        mission.payload_weight = weight
+        mission.pickup_address = "Emergency Medical Facility"
+        mission.delivery_address = delivery_address
+        mission.priority = 'emergency'
+        mission.status = 'pending'
+        mission.notes = f"Emergency Request - Patient: {patient_name}, Contact: {contact_number}, Description: {description}"
+        mission.special_instructions = "EMERGENCY DELIVERY - HIGHEST PRIORITY"
         
         db.session.add(mission)
         db.session.commit()

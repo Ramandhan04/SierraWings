@@ -58,19 +58,18 @@ def verify_emergency(mission_id):
         admin_fee = total_amount * 0.15
         net_amount = total_amount - admin_fee
         
-        payment = PaymentTransaction(
-            mission_id=mission.id,
-            user_id=current_user.id,
-            transaction_id=transaction_id,
-            payment_method=request.json.get('payment_method', 'emergency_credit'),
-            total_amount=total_amount,
-            base_cost=base_fee,
-            weight_cost=weight_cost,
-            admin_fee_amount=admin_fee,
-            net_amount=net_amount,
-            status='completed',
-            completion_date=datetime.utcnow()
-        )
+        payment = PaymentTransaction()
+        payment.mission_id = mission.id
+        payment.user_id = current_user.id
+        payment.transaction_id = transaction_id
+        payment.payment_method = request.get_json().get('payment_method', 'emergency_credit') if request.is_json else 'emergency_credit'
+        payment.total_amount = total_amount
+        payment.base_cost = base_fee
+        payment.weight_cost = weight_cost
+        payment.admin_fee_amount = admin_fee
+        payment.net_amount = net_amount
+        payment.status = 'completed'
+        payment.completion_date = datetime.utcnow()
         
         db.session.add(payment)
         mission.payment_status = 'completed'
