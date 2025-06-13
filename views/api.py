@@ -222,20 +222,24 @@ def get_notifications():
             })
     
     elif current_user.role == 'admin':
-        # Check for payment notifications
-        from models_payment import PaymentTransaction
-        recent_payments = PaymentTransaction.query.filter_by(status='completed').filter(
-            PaymentTransaction.payment_date > datetime.utcnow() - timedelta(minutes=5)
-        ).all()
-        
-        for payment in recent_payments:
-            notifications.append({
-                'id': f'payment_{payment.id}',
-                'type': 'payment',
-                'message': f'New payment received: {payment.total_amount:.2f} NLE (Mission #{payment.mission_id})',
-                'url': '/admin/payment-management',
-                'duration': 8000
-            })
+        # Check for payment notifications - skip if table doesn't exist
+        try:
+            from models_payment import PaymentTransaction
+            recent_payments = PaymentTransaction.query.filter_by(status='completed').filter(
+                PaymentTransaction.payment_date > datetime.utcnow() - timedelta(minutes=5)
+            ).all()
+            
+            for payment in recent_payments:
+                notifications.append({
+                    'id': f'payment_{payment.id}',
+                    'type': 'payment',
+                    'message': f'New payment received: {payment.total_amount:.2f} NLE (Mission #{payment.mission_id})',
+                    'url': '/admin/payment-management',
+                    'duration': 8000
+                })
+        except Exception:
+            # Payment table not ready yet, skip payment notifications
+            pass
         
         # Check for system alerts
         low_battery_drones = Drone.query.filter(Drone.battery_level < 20).all()
@@ -251,6 +255,37 @@ def get_notifications():
     return jsonify(notifications)
 
 # Production system - telemetry comes from authentic drone hardware only
+
+@bp.route('/clinics')
+@login_required
+def get_clinics():
+    """Get all verified clinics for patient search"""
+    from models import ClinicProfile
+    
+    clinics = ClinicProfile.query.filter_by(is_active=True).all()
+    
+    clinic_data = []
+    for clinic in clinics:
+        clinic_info = {
+            'id': clinic.id,
+            'clinic_name': clinic.clinic_name,
+            'address': clinic.address,
+            'city': clinic.city,
+            'state': clinic.state,
+            'latitude': clinic.latitude,
+            'longitude': clinic.longitude,
+            'specialties': clinic.specialties,
+            'description': clinic.description,
+            'operating_hours': clinic.operating_hours,
+            'emergency_contact': clinic.emergency_contact,
+            'website': clinic.website,
+            'service_radius': clinic.service_radius,
+            'is_verified': clinic.is_verified,
+            'license_number': clinic.license_number
+        }
+        clinic_data.append(clinic_info)
+    
+    return jsonify(clinic_data)
 
 @bp.route('/missions/<int:mission_id>/start', methods=['POST'])
 @login_required

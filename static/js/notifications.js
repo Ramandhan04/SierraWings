@@ -51,7 +51,10 @@ class SierraWingsNotifications {
     async checkForNotifications() {
         try {
             const response = await fetch('/api/notifications');
-            if (!response.ok) return;
+            if (!response.ok) {
+                console.log('Notifications API not available:', response.status);
+                return;
+            }
 
             const notifications = await response.json();
             
@@ -62,7 +65,7 @@ class SierraWingsNotifications {
                 }
             }
         } catch (error) {
-            // Silent fail - don't spam console in production
+            console.log('Error checking notifications:', error);
         }
     }
 

@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from models import User
 from app import db
 from email_service import send_welcome_email
+import random
 
 bp = Blueprint('auth', __name__)
 

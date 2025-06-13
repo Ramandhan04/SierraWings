@@ -17,6 +17,13 @@ def patient_required(f):
     decorated_function.__name__ = f.__name__
     return decorated_function
 
+@bp.route('/find-clinics')
+@login_required
+@patient_required
+def find_clinics():
+    """Search and view available medical facilities"""
+    return render_template('patient/find_clinics.html')
+
 @bp.route('/')
 @login_required
 @patient_required
