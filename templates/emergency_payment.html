@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Emergency Payment - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-danger shadow-lg">
+                <div class="card-header bg-danger text-white text-center">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Emergency Payment Verification
+                    </h3>
+                    <p class="mb-0 mt-2">Mission #{{ mission.id }}</p>
+                </div>
+                
+                <div class="card-body p-4">
+                    <div class="alert alert-warning">
+                        <h6><i class="fas fa-info-circle me-2"></i>Emergency Request Details</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Type:</strong> {{ mission.payload_type }}</p>
+                                <p class="mb-1"><strong>Weight:</strong> {{ mission.payload_weight }}kg</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Priority:</strong> <span class="badge bg-danger">EMERGENCY</span></p>
+                                <p class="mb-1"><strong>Status:</strong> {{ mission.status.title() }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="pricing-breakdown mb-4">
+                        <h6 class="text-primary mb-3">Emergency Delivery Pricing</h6>
+                        <div class="pricing-item">
+                            <span>Emergency Base Fee:</span>
+                            <span>{{ "%.2f"|format(base_fee) }} NLE</span>
+                        </div>
+                        <div class="pricing-item">
+                            <span>Priority Surcharge:</span>
+                            <span>{{ "%.2f"|format(priority_surcharge) }} NLE</span>
+                        </div>
+                        <div class="pricing-item">
+                            <span>Weight Cost ({{ mission.payload_weight }}kg):</span>
+                            <span>{{ "%.2f"|format(weight_cost) }} NLE</span>
+                        </div>
+                        <div class="pricing-item fw-bold border-top pt-2">
+                            <span>Total Amount:</span>
+                            <span class="text-danger">{{ "%.2f"|format(total_cost) }} NLE</span>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-shield-alt me-2"></i>Emergency Verification</h6>
+                        <p class="mb-2">By proceeding with payment, you confirm that:</p>
+                        <ul class="mb-0">
+                            <li>This is a genuine medical emergency</li>
+                            <li>The requested items are medically necessary</li>
+                            <li>You authorize emergency drone delivery</li>
+                            <li>You understand emergency requests receive highest priority</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-primary mb-3">Payment Method</h6>
+                        <div class="payment-methods">
+                            <div class="payment-method selected" data-method="africanmoney">
+                                <i class="fas fa-mobile-alt text-primary me-3"></i>
+                                <div>
+                                    <strong>African Money</strong>
+                                    <small class="d-block text-muted">Mobile money payment</small>
+                                </div>
+                            </div>
+                            
+                            <div class="payment-method mt-2" data-method="orangemoney">
+                                <i class="fas fa-phone text-warning me-3"></i>
+                                <div>
+                                    <strong>Orange Money</strong>
+                                    <small class="d-block text-muted">Mobile money payment</small>
+                                </div>
+                            </div>
+                            
+                            <div class="payment-method mt-2" data-method="qmoney">
+                                <i class="fas fa-coins text-success me-3"></i>
+                                <div>
+                                    <strong>QMoney</strong>
+                                    <small class="d-block text-muted">Digital wallet payment</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-danger btn-lg" onclick="verifyEmergencyPayment()">
+                            <i class="fas fa-credit-card me-2"></i>Verify Payment & Process Emergency
+                        </button>
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('patient.dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedPaymentMethod = 'africanmoney';
+
+// Payment method selection
+document.querySelectorAll('.payment-method').forEach(method => {
+    method.addEventListener('click', function() {
+        document.querySelectorAll('.payment-method').forEach(m => m.classList.remove('selected'));
+        this.classList.add('selected');
+        selectedPaymentMethod = this.getAttribute('data-method');
+    });
+});
+
+async function verifyEmergencyPayment() {
+    const button = document.querySelector('.btn-danger');
+    const originalText = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing Emergency Payment...';
+    button.disabled = true;
+    
+    try {
+        const response = await fetch(`/emergency/verify/{{ mission.id }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                payment_method: selectedPaymentMethod
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // Show success notification
+            showSierraWingsNotification('Emergency payment verified! All clinics have been notified with highest priority.', 'success', 8000);
+            
+            // Redirect after a delay
+            setTimeout(() => {
+                window.location.href = result.redirect_url;
+            }, 2000);
+        } else {
+            throw new Error(result.error || 'Payment verification failed');
+        }
+    } catch (error) {
+        console.error('Payment verification error:', error);
+        showSierraWingsNotification('Payment verification failed. Please try again.', 'error');
+        
+        // Restore button
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+</script>
+
+<style>
+.pricing-breakdown {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 10px;
+    padding: 20px;
+    border: 2px solid #dc3545;
+}
+
+.pricing-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.pricing-item:last-child {
+    border-bottom: none;
+    font-size: 1.2rem;
+    margin-top: 10px;
+}
+
+.payment-methods .payment-method {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.payment-methods .payment-method:hover {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.payment-methods .payment-method.selected {
+    border-color: #dc3545;
+    background: linear-gradient(135deg, #fff5f5, #ffe6e6);
+}
+</style>
+{% endblock %}

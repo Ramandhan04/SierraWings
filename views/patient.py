@@ -22,7 +22,7 @@ def patient_required(f):
 @patient_required
 def find_clinics():
     """Search and view available medical facilities"""
-    return render_template('patient/find_clinics.html')
+    return render_template('find_clinics.html')
 
 @bp.route('/')
 @login_required

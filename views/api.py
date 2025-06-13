@@ -287,6 +287,86 @@ def get_clinics():
     
     return jsonify(clinic_data)
 
+@bp.route('/emergency-request', methods=['POST'])
+@login_required
+def emergency_request():
+    """Handle emergency medical delivery requests"""
+    try:
+        # Get form data
+        emergency_type = request.form.get('emergency_type')
+        weight = float(request.form.get('weight', 0))
+        description = request.form.get('description')
+        patient_name = request.form.get('patient_name')
+        contact_number = request.form.get('contact_number')
+        delivery_address = request.form.get('delivery_address')
+        
+        # Validate required fields
+        if not all([emergency_type, weight, description, patient_name, contact_number, delivery_address]):
+            return jsonify({'error': 'All fields are required'}), 400
+        
+        if weight > 10:
+            return jsonify({'error': 'Weight exceeds maximum limit of 10kg'}), 400
+        
+        # Calculate emergency pricing
+        base_fee = 50.0  # Emergency base fee
+        priority_surcharge = 25.0
+        weight_cost = max(0, (weight - 1) * 3)  # 3 NLE per kg above 1kg
+        total_cost = base_fee + priority_surcharge + weight_cost
+        
+        # Create emergency mission
+        mission = Mission(
+            user_id=current_user.id,
+            payload_type=f"EMERGENCY: {emergency_type}",
+            payload_weight=weight,
+            pickup_address="Emergency Medical Facility",
+            delivery_address=delivery_address,
+            priority='emergency',
+            status='pending',
+            notes=f"Emergency Request - Patient: {patient_name}, Contact: {contact_number}, Description: {description}",
+            special_instructions="EMERGENCY DELIVERY - HIGHEST PRIORITY"
+        )
+        
+        db.session.add(mission)
+        db.session.commit()
+        
+        # Send emergency notification to all clinics
+        from email_service import send_emergency_notification_email
+        from models import ClinicProfile
+        
+        emergency_clinics = ClinicProfile.query.filter_by(is_verified=True, is_active=True).all()
+        for clinic in emergency_clinics:
+            try:
+                send_emergency_notification_email(
+                    clinic.user.email,
+                    clinic.clinic_name,
+                    {
+                        'mission_id': mission.id,
+                        'emergency_type': emergency_type,
+                        'patient_name': patient_name,
+                        'weight': weight,
+                        'description': description,
+                        'contact_number': contact_number,
+                        'delivery_address': delivery_address
+                    }
+                )
+            except Exception as e:
+                print(f"Failed to send emergency notification to {clinic.clinic_name}: {e}")
+        
+        # Create payment URL for emergency request
+        payment_url = f"/payment/emergency/{mission.id}?amount={total_cost:.2f}"
+        
+        return jsonify({
+            'success': True,
+            'mission_id': mission.id,
+            'message': 'Emergency request submitted successfully. All verified clinics have been notified.',
+            'payment_url': payment_url,
+            'total_cost': total_cost
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @bp.route('/missions/<int:mission_id>/start', methods=['POST'])
 @login_required
 def start_mission_api(mission_id):
