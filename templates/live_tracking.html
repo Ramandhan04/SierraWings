@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% block title %}Live Mission Tracking - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-primary">
+                    <i class="fas fa-map-marked-alt me-2"></i>Live Mission Tracking
+                </h2>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-danger fs-6"><i class="fas fa-circle me-1"></i>Patient Location</span>
+                    <span class="badge bg-primary fs-6"><i class="fas fa-circle me-1"></i>Clinic/Base</span>
+                    <span class="badge bg-success fs-6"><i class="fas fa-circle me-1"></i>Drone Movement</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Map Section -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-globe me-2"></i>Real-Time Location Tracking
+                        <span class="badge bg-success ms-2" id="connectionStatus">Live</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="map" style="height: 600px; width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mission Info Panel -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Mission Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="missionInfo">
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-search fa-3x mb-3"></i>
+                            <p>Select a mission to view details</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Active Missions -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Active Missions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="activeMissions">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Location Controls -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>Location Controls
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" onclick="requestLocationPermission()">
+                            <i class="fas fa-location-arrow me-2"></i>Enable Location Access
+                        </button>
+                        <button class="btn btn-outline-info" onclick="centerOnClinic()">
+                            <i class="fas fa-home me-2"></i>Center on Clinic
+                        </button>
+                        <button class="btn btn-outline-success" onclick="refreshData()">
+                            <i class="fas fa-sync me-2"></i>Refresh Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<script>
+// Global variables
+let map;
+let patientMarker;
+let clinicMarker;
+let droneMarker;
+let routePolyline;
+let activeMissionId = null;
+let locationUpdateInterval;
+let clinicLocation = null;
+
+// Initialize map
+function initializeMap() {
+    // Sierra Leone coordinates (Freetown)
+    const sierraLeoneCenter = [8.4606, -13.2317];
+    
+    map = L.map('map').setView(sierraLeoneCenter, 10);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    // Request user location permission
+    requestLocationPermission();
+    
+    // Load active missions
+    loadActiveMissions();
+    
+    // Start real-time updates
+    startLocationUpdates();
+}
+
+function requestLocationPermission() {
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                clinicLocation = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                };
+                
+                // Add clinic marker (blue)
+                if (clinicMarker) {
+                    map.removeLayer(clinicMarker);
+                }
+                
+                clinicMarker = L.marker([clinicLocation.lat, clinicLocation.lng], {
+                    icon: L.divIcon({
+                        className: 'clinic-marker',
+                        html: '<i class="fas fa-hospital" style="color: #007bff; font-size: 24px;"></i>',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map);
+                
+                clinicMarker.bindPopup(`
+                    <div class="text-center">
+                        <h6 class="text-primary">Your Clinic</h6>
+                        <p class="mb-1"><strong>{{ current_user.clinic_profile.clinic_name if current_user.clinic_profile else 'Your Location' }}</strong></p>
+                        <small class="text-muted">Lat: ${clinicLocation.lat.toFixed(6)}<br>Lng: ${clinicLocation.lng.toFixed(6)}</small>
+                    </div>
+                `);
+                
+                map.setView([clinicLocation.lat, clinicLocation.lng], 12);
+                showNotification('Location access granted. Real-time tracking enabled.', 'success');
+            },
+            function(error) {
+                let errorMessage = 'Location access needed for real-time tracking. ';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += 'Please enable location access in your browser settings.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += 'Location information is unavailable.';
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += 'Location request timed out.';
+                        break;
+                }
+                showNotification(errorMessage, 'warning');
+            }
+        );
+    } else {
+        showNotification('Geolocation is not supported by this browser.', 'error');
+    }
+}
+
+function loadActiveMissions() {
+    fetch('/api/active-missions')
+        .then(response => response.json())
+        .then(missions => {
+            const container = document.getElementById('activeMissions');
+            
+            if (missions.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p>No active missions</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            missions.forEach(mission => {
+                const missionElement = document.createElement('div');
+                missionElement.className = 'mission-item p-3 mb-2 border rounded cursor-pointer';
+                missionElement.onclick = () => selectMission(mission);
+                
+                missionElement.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">Mission #${mission.id}</h6>
+                            <small class="text-muted">${mission.payload_type}</small>
+                        </div>
+                        <span class="badge bg-${getStatusColor(mission.status)}">${mission.status}</span>
+                    </div>
+                `;
+                
+                container.appendChild(missionElement);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading missions:', error);
+            showNotification('Failed to load active missions', 'error');
+        });
+}
+
+function selectMission(mission) {
+    activeMissionId = mission.id;
+    
+    // Update mission info panel
+    const missionInfo = document.getElementById('missionInfo');
+    missionInfo.innerHTML = `
+        <div class="mission-details">
+            <h6 class="text-primary mb-3">Mission #${mission.id}</h6>
+            
+            <div class="mb-3">
+                <label class="fw-bold">Patient:</label>
+                <p class="mb-1">${mission.user_name}</p>
+                <small class="text-muted">${mission.user_email}</small>
+            </div>
+            
+            <div class="mb-3">
+                <label class="fw-bold">Medical Item:</label>
+                <p class="mb-0">${mission.payload_type}</p>
+                <small class="text-muted">Weight: ${mission.payload_weight} kg</small>
+            </div>
+            
+            <div class="mb-3">
+                <label class="fw-bold">Status:</label>
+                <span class="badge bg-${getStatusColor(mission.status)} ms-2">${mission.status}</span>
+            </div>
+            
+            <div class="mb-3">
+                <label class="fw-bold">Pickup Address:</label>
+                <p class="mb-0 small">${mission.pickup_address}</p>
+            </div>
+            
+            <div class="mb-3">
+                <label class="fw-bold">Delivery Address:</label>
+                <p class="mb-0 small">${mission.delivery_address}</p>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button class="btn btn-sm btn-outline-primary" onclick="trackMission(${mission.id})">
+                    <i class="fas fa-route me-1"></i>Track on Map
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Highlight selected mission
+    document.querySelectorAll('.mission-item').forEach(item => {
+        item.classList.remove('border-primary', 'bg-light');
+    });
+    event.target.closest('.mission-item').classList.add('border-primary', 'bg-light');
+}
+
+function trackMission(missionId) {
+    // Clear existing markers and routes
+    if (patientMarker) map.removeLayer(patientMarker);
+    if (droneMarker) map.removeLayer(droneMarker);
+    if (routePolyline) map.removeLayer(routePolyline);
+    
+    // Fetch mission tracking data
+    fetch(`/api/mission/${missionId}/tracking`)
+        .then(response => response.json())
+        .then(data => {
+            // Add patient marker (red)
+            if (data.delivery_lat && data.delivery_lon) {
+                patientMarker = L.marker([data.delivery_lat, data.delivery_lon], {
+                    icon: L.divIcon({
+                        className: 'patient-marker',
+                        html: '<i class="fas fa-user-injured" style="color: #dc3545; font-size: 24px;"></i>',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map);
+                
+                patientMarker.bindPopup(`
+                    <div class="text-center">
+                        <h6 class="text-danger">Patient Location</h6>
+                        <p class="mb-1"><strong>${data.user_name}</strong></p>
+                        <p class="mb-1">${data.delivery_address}</p>
+                        <small class="text-muted">Delivery destination</small>
+                    </div>
+                `);
+            }
+            
+            // Add drone marker (green) if mission is active
+            if (data.status === 'in_flight' && data.drone_lat && data.drone_lon) {
+                droneMarker = L.marker([data.drone_lat, data.drone_lon], {
+                    icon: L.divIcon({
+                        className: 'drone-marker',
+                        html: '<i class="fas fa-drone" style="color: #28a745; font-size: 24px;"></i>',
+                        iconSize: [30, 30]
+                    })
+                }).addTo(map);
+                
+                droneMarker.bindPopup(`
+                    <div class="text-center">
+                        <h6 class="text-success">Drone Position</h6>
+                        <p class="mb-1"><strong>${data.drone_name || 'Medical Drone'}</strong></p>
+                        <p class="mb-1">Battery: ${data.battery_level}%</p>
+                        <small class="text-muted">Speed: ${data.speed || 0} m/s</small>
+                    </div>
+                `);
+            }
+            
+            // Draw route if available
+            if (data.route_points && data.route_points.length > 0) {
+                routePolyline = L.polyline(data.route_points, {
+                    color: '#28a745',
+                    weight: 4,
+                    opacity: 0.7
+                }).addTo(map);
+            }
+            
+            // Fit map to show all markers
+            const group = new L.featureGroup();
+            if (patientMarker) group.addLayer(patientMarker);
+            if (clinicMarker) group.addLayer(clinicMarker);
+            if (droneMarker) group.addLayer(droneMarker);
+            
+            if (group.getLayers().length > 0) {
+                map.fitBounds(group.getBounds().pad(0.1));
+            }
+        })
+        .catch(error => {
+            console.error('Error tracking mission:', error);
+            showNotification('Failed to load mission tracking data', 'error');
+        });
+}
+
+function startLocationUpdates() {
+    locationUpdateInterval = setInterval(() => {
+        if (activeMissionId) {
+            updateDronePosition(activeMissionId);
+        }
+        loadActiveMissions();
+    }, 5000); // Update every 5 seconds
+}
+
+function updateDronePosition(missionId) {
+    fetch(`/api/mission/${missionId}/drone-position`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.lat && data.lon && droneMarker) {
+                // Update drone position smoothly
+                droneMarker.setLatLng([data.lat, data.lon]);
+                
+                // Update popup content
+                const popupContent = `
+                    <div class="text-center">
+                        <h6 class="text-success">Drone Position</h6>
+                        <p class="mb-1"><strong>${data.drone_name || 'Medical Drone'}</strong></p>
+                        <p class="mb-1">Battery: ${data.battery_level}%</p>
+                        <p class="mb-1">Altitude: ${data.altitude}m</p>
+                        <small class="text-muted">Speed: ${data.speed || 0} m/s</small>
+                    </div>
+                `;
+                droneMarker.setPopupContent(popupContent);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating drone position:', error);
+        });
+}
+
+function getStatusColor(status) {
+    const colors = {
+        'pending': 'warning',
+        'accepted': 'info',
+        'in_flight': 'success',
+        'completed': 'primary',
+        'cancelled': 'danger'
+    };
+    return colors[status] || 'secondary';
+}
+
+function centerOnClinic() {
+    if (clinicLocation && map) {
+        map.setView([clinicLocation.lat, clinicLocation.lng], 14);
+        if (clinicMarker) {
+            clinicMarker.openPopup();
+        }
+    } else {
+        showNotification('Clinic location not available', 'warning');
+    }
+}
+
+function refreshData() {
+    loadActiveMissions();
+    if (activeMissionId) {
+        trackMission(activeMissionId);
+    }
+    showNotification('Data refreshed', 'info');
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info'} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeMap();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (locationUpdateInterval) {
+        clearInterval(locationUpdateInterval);
+    }
+});
+</script>
+
+<style>
+.mission-item {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.mission-item:hover {
+    background-color: #f8f9fa;
+    border-color: #007bff !important;
+}
+
+.clinic-marker, .patient-marker, .drone-marker {
+    background: none;
+    border: none;
+}
+
+#map {
+    border-radius: 8px;
+}
+
+.card {
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced visibility styling */
+.text-primary {
+    color: #3498db !important;
+}
+
+.btn-primary {
+    background-color: #3498db;
+    border-color: #3498db;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+}
+
+.badge {
+    font-weight: 600;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #2c3e50;
+    font-weight: 700;
+}
+</style>
+{% endblock %}

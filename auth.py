@@ -8,6 +8,10 @@ import io
 import base64
 import json
 import secrets
+import random
+import os
+from werkzeug.utils import secure_filename
+from datetime import datetime, timedelta
 from models import User
 from app import db
 from email_service import send_welcome_email
