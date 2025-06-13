@@ -209,7 +209,7 @@
                                                 {{ mission.priority|title }}
                                             </span>
                                         </td>
-                                        <td>{{ mission.accepted_at.strftime('%m/%d %H:%M') }}</td>
+                                        <td>{{ mission.accepted_at.strftime('%m/%d %H:%M') if mission.accepted_at else 'Not accepted' }}</td>
                                         <td>
                                             <button class="btn btn-sm btn-primary" onclick="dispatchMission({{ mission.id }})">
                                                 <i class="fas fa-paper-plane"></i> Dispatch

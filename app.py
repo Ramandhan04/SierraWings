@@ -48,6 +48,7 @@ from views.payment import bp as payment_bp
 from views.feedback import bp as feedback_bp
 from views.legal import bp as legal_bp
 from views.hospital import bp as hospital_bp
+from views.emergency import bp as emergency_bp
 import json
 
 # Register blueprints
@@ -61,6 +62,7 @@ app.register_blueprint(payment_bp)
 app.register_blueprint(feedback_bp)
 app.register_blueprint(legal_bp)
 app.register_blueprint(hospital_bp, url_prefix='/hospital')
+app.register_blueprint(emergency_bp)
 
 # Add template filter for JSON parsing
 @app.template_filter('from_json')
