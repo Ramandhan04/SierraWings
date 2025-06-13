@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Management - SierraWings Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-primary">
+                    <i class="fas fa-money-bill-wave me-2"></i>Payment Management
+                </h2>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="{{ url_for('admin.dashboard') }}">Admin Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item active">Payment Management</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #28a745, #20c997); color: white;">
+                <div class="card-body text-center">
+                    <i class="fas fa-money-bill-wave fa-2x mb-3"></i>
+                    <h4>{{ "%.2f"|format(total_revenue) }} NLE</h4>
+                    <p class="mb-0">Total Revenue</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #ffc107, #fd7e14); color: white;">
+                <div class="card-body text-center">
+                    <i class="fas fa-percentage fa-2x mb-3"></i>
+                    <h4>{{ "%.2f"|format(total_admin_fees) }} NLE</h4>
+                    <p class="mb-0">Total Admin Fees</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white;">
+                <div class="card-body text-center">
+                    <i class="fas fa-wallet fa-2x mb-3"></i>
+                    <h4>{{ "%.2f"|format(available_for_withdrawal) }} NLE</h4>
+                    <p class="mb-0">Available to Withdraw</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #6f42c1, #e83e8c); color: white;">
+                <div class="card-body text-center">
+                    <i class="fas fa-hand-holding-usd fa-2x mb-3"></i>
+                    <h4>15%</h4>
+                    <p class="mb-0">Admin Fee Rate</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Withdrawal Section -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-download me-2"></i>Withdraw Admin Fees
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if available_for_withdrawal > 0 %}
+                        <form method="POST" action="{{ url_for('admin.withdraw_fees') }}">
+                            <div class="mb-3">
+                                <label for="withdrawalAmount" class="form-label">Withdrawal Amount (NLE)</label>
+                                <input type="number" class="form-control" id="withdrawalAmount" name="withdrawal_amount" 
+                                       step="0.01" min="0.01" max="{{ available_for_withdrawal }}" 
+                                       value="{{ available_for_withdrawal }}" required>
+                                <div class="form-text">Available: {{ "%.2f"|format(available_for_withdrawal) }} NLE</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="withdrawalMethod" class="form-label">Withdrawal Method</label>
+                                <select class="form-select" id="withdrawalMethod" name="withdrawal_method" required>
+                                    <option value="">Select method</option>
+                                    <option value="solana">Solana Wallet</option>
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="mobile_money">Mobile Money</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="withdrawalAddress" class="form-label">Wallet Address/Account Details</label>
+                                <input type="text" class="form-control" id="withdrawalAddress" name="withdrawal_address" 
+                                       placeholder="Enter Solana wallet address or account details" required>
+                                <div class="form-text">For Solana: Enter your wallet address</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-download me-2"></i>Process Withdrawal
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-wallet fa-3x mb-3"></i>
+                            <p>No funds available for withdrawal</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Recent Withdrawals -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>Recent Withdrawals
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_withdrawals %}
+                        {% for withdrawal in recent_withdrawals %}
+                        <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded">
+                            <div>
+                                <div class="fw-bold">{{ "%.2f"|format(withdrawal.withdrawal_amount) }} NLE</div>
+                                <small class="text-muted">{{ withdrawal.withdrawal_method|title }}</small>
+                                <br>
+                                <small class="text-muted">{{ withdrawal.requested_date.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </div>
+                            <div>
+                                {% if withdrawal.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif withdrawal.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ withdrawal.status|title }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted py-3">
+                            <p>No withdrawals yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Payment Transactions -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fas fa-credit-card me-2"></i>Payment Transactions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if payments.items %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Transaction ID</th>
+                                        <th>User</th>
+                                        <th>Mission</th>
+                                        <th>Amount</th>
+                                        <th>Admin Fee</th>
+                                        <th>Method</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Withdrawal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payment in payments.items %}
+                                    <tr>
+                                        <td>
+                                            <small class="font-monospace">{{ payment.transaction_id[:20] }}...</small>
+                                        </td>
+                                        <td>
+                                            <div>{{ payment.user.full_name }}</div>
+                                            <small class="text-muted">{{ payment.user.email }}</small>
+                                        </td>
+                                        <td>
+                                            <a href="#" class="btn btn-sm btn-outline-primary">
+                                                Mission #{{ payment.mission_id }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <div class="fw-bold">{{ "%.2f"|format(payment.total_amount) }} NLE</div>
+                                            <small class="text-muted">Net: {{ "%.2f"|format(payment.net_amount) }} NLE</small>
+                                        </td>
+                                        <td>
+                                            <span class="fw-bold text-success">{{ "%.2f"|format(payment.admin_fee_amount) }} NLE</span>
+                                        </td>
+                                        <td>
+                                            {% if payment.payment_method == 'africanmoney' %}
+                                                <span class="badge bg-primary">African Money</span>
+                                            {% elif payment.payment_method == 'orangemoney' %}
+                                                <span class="badge bg-warning">Orange Money</span>
+                                            {% elif payment.payment_method == 'qmoney' %}
+                                                <span class="badge bg-info">Q Money</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ payment.payment_method|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div>{{ payment.payment_date.strftime('%Y-%m-%d') }}</div>
+                                            <small class="text-muted">{{ payment.payment_date.strftime('%H:%M') }}</small>
+                                        </td>
+                                        <td>
+                                            {% if payment.status == 'completed' %}
+                                                <span class="badge bg-success">Completed</span>
+                                            {% elif payment.status == 'pending' %}
+                                                <span class="badge bg-warning">Pending</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ payment.status|title }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if payment.is_withdrawn %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i>Withdrawn
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Available</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        {% if payments.pages > 1 %}
+                        <nav aria-label="Payments pagination">
+                            <ul class="pagination justify-content-center">
+                                {% if payments.has_prev %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.payment_management', page=payments.prev_num) }}">Previous</a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for page_num in payments.iter_pages() %}
+                                    {% if page_num %}
+                                        {% if page_num != payments.page %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="{{ url_for('admin.payment_management', page=page_num) }}">{{ page_num }}</a>
+                                            </li>
+                                        {% else %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ page_num }}</span>
+                                            </li>
+                                        {% endif %}
+                                    {% else %}
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if payments.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.payment_management', page=payments.next_num) }}">Next</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-credit-card fa-4x mb-3"></i>
+                            <h5>No payment transactions found</h5>
+                            <p>Payment transactions will appear here once users make payments</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Enhanced visibility styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #2c3e50;
+    background-color: #f8f9fa;
+}
+
+.card {
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.form-control, .form-select {
+    border: 2px solid #bdc3c7;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 16px;
+    color: #2c3e50;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+.btn-primary {
+    background-color: #3498db;
+    border-color: #3498db;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+    border-color: #2980b9;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #34495e;
+}
+
+.badge {
+    font-size: 0.75em;
+    font-weight: 600;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+.text-primary {
+    color: #3498db !important;
+}
+
+.breadcrumb-item a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    color: #2980b9;
+}
+</style>
+{% endblock %}
