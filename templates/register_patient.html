@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block title %}Register New Patient - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-success text-white text-center py-4">
+                    <h3 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Register New Patient
+                    </h3>
+                    <p class="mb-0">Digital Patient Registration with GDPR Compliance</p>
+                </div>
+                
+                <div class="card-body p-5">
+                    <form method="POST" id="patientForm">
+                        <!-- Personal Information -->
+                        <div class="section-header">
+                            <h4 class="text-primary mb-3">
+                                <i class="fas fa-user me-2"></i>Personal Information
+                            </h4>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="firstName" class="form-label">First Name *</label>
+                                <input type="text" class="form-control" id="firstName" name="first_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="lastName" class="form-label">Last Name *</label>
+                                <input type="text" class="form-control" id="lastName" name="last_name" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="dateOfBirth" class="form-label">Date of Birth *</label>
+                                <input type="date" class="form-control" id="dateOfBirth" name="date_of_birth" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="gender" class="form-label">Gender *</label>
+                                <select class="form-select" id="gender" name="gender" required>
+                                    <option value="">Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="bloodType" class="form-label">Blood Type</label>
+                                <select class="form-select" id="bloodType" name="blood_type">
+                                    <option value="">Select Blood Type</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <div class="section-header mt-4">
+                            <h4 class="text-primary mb-3">
+                                <i class="fas fa-phone me-2"></i>Contact Information
+                            </h4>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" placeholder="+232 XX XXX XXXX">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="address" class="form-label">Home Address</label>
+                                <input type="text" class="form-control" id="address" name="address">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="city" class="form-label">City</label>
+                                <select class="form-select" id="city" name="city">
+                                    <option value="">Select City</option>
+                                    <option value="Freetown">Freetown</option>
+                                    <option value="Bo">Bo</option>
+                                    <option value="Kenema">Kenema</option>
+                                    <option value="Makeni">Makeni</option>
+                                    <option value="Koidu">Koidu</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="region" class="form-label">Region/Ward</label>
+                            <select class="form-select" id="region" name="region" disabled>
+                                <option value="">Select Region/Ward</option>
+                            </select>
+                        </div>
+
+                        <!-- Emergency Contact -->
+                        <div class="section-header mt-4">
+                            <h4 class="text-primary mb-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Emergency Contact
+                            </h4>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="emergencyContactName" class="form-label">Emergency Contact Name</label>
+                                <input type="text" class="form-control" id="emergencyContactName" name="emergency_contact_name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="emergencyContactPhone" class="form-label">Emergency Contact Phone</label>
+                                <input type="tel" class="form-control" id="emergencyContactPhone" name="emergency_contact_phone">
+                            </div>
+                        </div>
+
+                        <!-- Medical Information -->
+                        <div class="section-header mt-4">
+                            <h4 class="text-primary mb-3">
+                                <i class="fas fa-stethoscope me-2"></i>Medical Information
+                            </h4>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="allergies" class="form-label">Known Allergies</label>
+                                <textarea class="form-control" id="allergies" name="allergies" rows="3" 
+                                          placeholder="List any known allergies (medications, food, environmental)"></textarea>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="chronicConditions" class="form-label">Chronic Conditions</label>
+                                <textarea class="form-control" id="chronicConditions" name="chronic_conditions" rows="3" 
+                                          placeholder="List any chronic medical conditions"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="currentMedications" class="form-label">Current Medications</label>
+                            <textarea class="form-control" id="currentMedications" name="current_medications" rows="3" 
+                                      placeholder="List current medications with dosages"></textarea>
+                        </div>
+
+                        <!-- GDPR Compliance -->
+                        <div class="gdpr-section bg-light p-4 rounded mb-4">
+                            <h5 class="text-success mb-3">
+                                <i class="fas fa-shield-alt me-2"></i>Data Protection & Privacy (GDPR)
+                            </h5>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="consentDataProcessing" 
+                                       name="consent_data_processing" required>
+                                <label class="form-check-label" for="consentDataProcessing">
+                                    <strong>I consent to the processing of my personal and medical data</strong> for healthcare purposes 
+                                    by {{ current_user.clinic_profile.clinic_name }}. This includes storing, organizing, and using 
+                                    my data for medical treatment, appointment scheduling, and healthcare administration.
+                                </label>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="consentDataSharing" name="consent_data_sharing">
+                                <label class="form-check-label" for="consentDataSharing">
+                                    <strong>I consent to sharing my medical data with other healthcare providers</strong> 
+                                    when necessary for my medical care, emergency treatment, or when I specifically authorize it.
+                                </label>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="authorizeRecordSharing" name="authorize_record_sharing">
+                                <label class="form-check-label" for="authorizeRecordSharing">
+                                    <strong>I authorize cross-hospital medical record sharing</strong> when I visit other hospitals 
+                                    and provide my consent for them to access my medical history from this hospital.
+                                </label>
+                            </div>
+                            
+                            <div class="data-rights bg-white p-3 rounded mt-3">
+                                <h6 class="text-info mb-2">Your Data Rights</h6>
+                                <ul class="small text-muted mb-0">
+                                    <li>Right to access your personal data</li>
+                                    <li>Right to correct inaccurate information</li>
+                                    <li>Right to request deletion (subject to medical record retention requirements)</li>
+                                    <li>Right to restrict processing in certain circumstances</li>
+                                    <li>Right to data portability</li>
+                                    <li>Right to withdraw consent (where processing is based on consent)</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Data Retention Notice -->
+                        <div class="alert alert-info mb-4">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-calendar-alt me-2"></i>Data Retention Policy
+                            </h6>
+                            <p class="mb-0">
+                                Patient medical records will be retained for 7 years as required by Sierra Leone medical regulations. 
+                                Personal data will be securely disposed of after this period unless legally required to retain longer.
+                            </p>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg" id="submitBtn" disabled>
+                                <i class="fas fa-user-plus me-2"></i>Register Patient
+                            </button>
+                            <a href="{{ url_for('hospital.patient_list') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Patient List
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.section-header {
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+}
+
+.gdpr-section {
+    border-left: 4px solid #28a745;
+}
+
+.data-rights {
+    border: 1px solid #dee2e6;
+}
+
+.form-check-label {
+    line-height: 1.5;
+}
+
+.alert-heading {
+    margin-bottom: 0.5rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Regional mapping for Sierra Leone
+    const regionMapping = {
+        'Freetown': ['Western Urban - Central', 'Western Urban - East', 'Western Urban - West', 'Western Rural'],
+        'Bo': ['North Ward', 'East Ward', 'West Ward', 'Central Ward'],
+        'Kenema': ['City Center', 'Nongowa Ward', 'Small Bo Ward'],
+        'Makeni': ['Makeni City', 'Rogbere Ward', 'Masabong Ward'],
+        'Koidu': ['Koidu Town', 'Sefadu Ward', 'Nimikoro Ward']
+    };
+
+    function updateRegions() {
+        const citySelect = document.getElementById('city');
+        const regionSelect = document.getElementById('region');
+        const selectedCity = citySelect.value;
+        
+        regionSelect.innerHTML = '<option value="">Select Region/Ward</option>';
+        
+        if (selectedCity && regionMapping[selectedCity]) {
+            regionMapping[selectedCity].forEach(region => {
+                const option = document.createElement('option');
+                option.value = region;
+                option.textContent = region;
+                regionSelect.appendChild(option);
+            });
+            regionSelect.disabled = false;
+        } else {
+            regionSelect.disabled = true;
+        }
+    }
+
+    // Check GDPR consent requirements
+    function checkGDPRConsent() {
+        const consentProcessing = document.getElementById('consentDataProcessing').checked;
+        const submitBtn = document.getElementById('submitBtn');
+        
+        if (consentProcessing) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-secondary');
+            submitBtn.classList.add('btn-success');
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.remove('btn-success');
+            submitBtn.classList.add('btn-secondary');
+        }
+    }
+
+    // Event listeners
+    document.getElementById('city').addEventListener('change', updateRegions);
+    document.getElementById('consentDataProcessing').addEventListener('change', checkGDPRConsent);
+    
+    // Focus on first field
+    document.getElementById('firstName').focus();
+    
+    // Initialize
+    updateRegions();
+    checkGDPRConsent();
+});
+</script>
+{% endblock %}

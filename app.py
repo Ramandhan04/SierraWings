@@ -37,6 +37,7 @@ login_manager.login_message = 'Please log in to access this page.'
 # Import models and views
 from models import User, Drone, Mission, TelemetryLog, ClinicProfile
 from models_extensions import Feedback
+from models_hospital import HospitalPatient, MedicalRecord, PatientDataRequest, DataProcessingLog
 import auth
 from views.patient import bp as patient_bp
 from views.clinic import bp as clinic_bp
@@ -46,6 +47,7 @@ from views.live_tracking import bp as live_tracking_bp
 from views.payment import bp as payment_bp
 from views.feedback import bp as feedback_bp
 from views.legal import bp as legal_bp
+from views.hospital import bp as hospital_bp
 import json
 
 # Register blueprints
@@ -58,6 +60,7 @@ app.register_blueprint(live_tracking_bp)
 app.register_blueprint(payment_bp)
 app.register_blueprint(feedback_bp)
 app.register_blueprint(legal_bp)
+app.register_blueprint(hospital_bp, url_prefix='/hospital')
 
 # Add template filter for JSON parsing
 @app.template_filter('from_json')
