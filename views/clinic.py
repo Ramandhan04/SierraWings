@@ -207,12 +207,19 @@ def register_clinic():
             address = request.form.get('address')
             city = request.form.get('city')
             state = request.form.get('state')
-            zip_code = request.form.get('zip_code')
+            zip_code = request.form.get('zip_code', '').strip() or None
+            
+            # Get location coordinates
+            latitude = request.form.get('latitude')
+            longitude = request.form.get('longitude')
+            location_permission = request.form.get('location_permission') == 'on'
             
             # Service details
             service_radius = int(request.form.get('service_radius', 50))
             emergency_contact = request.form.get('emergency_contact')
-            website = request.form.get('website')
+            website = request.form.get('website', '').strip() or None
+            if website and not website.startswith(('http://', 'https://')):
+                website = 'https://' + website
             
             # Operating hours
             operating_hours = {

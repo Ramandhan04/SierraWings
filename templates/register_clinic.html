@@ -95,43 +95,30 @@
                             </div>
                             
                             <div class="col-12 mb-3">
-                                <label for="address" class="form-label">Street Address *</label>
-                                <input type="text" class="form-control" id="address" name="address" required>
+                                <label for="address" class="form-label">Complete Address *</label>
+                                <textarea class="form-control" id="address" name="address" rows="3" required 
+                                          placeholder="Enter complete address including street, landmarks"></textarea>
                             </div>
                             
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label for="city" class="form-label">City *</label>
-                                <select class="form-select" id="city" name="city" required>
+                                <select class="form-select" id="city" name="city" required onchange="updateProvince()">
                                     <option value="">Select City</option>
                                     <option value="Freetown">Freetown</option>
                                     <option value="Bo">Bo</option>
                                     <option value="Kenema">Kenema</option>
                                     <option value="Makeni">Makeni</option>
-                                    <option value="Koidu">Koidu</option>
                                 </select>
                             </div>
                             
-                            <div class="col-md-4 mb-3">
-                                <label for="region" class="form-label">Region/Ward *</label>
-                                <select class="form-select" id="region" name="region" required>
-                                    <option value="">Select Region/Ward</option>
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <label for="state" class="form-label">Province *</label>
-                                <select class="form-select" id="state" name="state" required>
-                                    <option value="">Select Province</option>
-                                    <option value="Western Area">Western Area</option>
-                                    <option value="Northern Province">Northern Province</option>
-                                    <option value="Southern Province">Southern Province</option>
-                                    <option value="Eastern Province">Eastern Province</option>
-                                </select>
+                                <input type="text" class="form-control" id="state" name="state" readonly style="background-color: #f8f9fa;">
                             </div>
                             
-                            <div class="col-md-4 mb-3">
-                                <label for="zip_code" class="form-label">ZIP Code *</label>
-                                <input type="text" class="form-control" id="zip_code" name="zip_code" required>
+                            <div class="col-md-6 mb-3">
+                                <label for="zip_code" class="form-label">ZIP Code</label>
+                                <input type="text" class="form-control" id="zip_code" name="zip_code" placeholder="Optional">
                             </div>
                             
                             <!-- Service Information -->
