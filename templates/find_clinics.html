@@ -154,14 +154,7 @@
                             <label for="specialtyFilter" class="form-label fw-bold">Specialty</label>
                             <select class="form-select" id="specialtyFilter" onchange="filterClinics()">
                                 <option value="">All Specialties</option>
-                                <option value="Emergency Medicine">Emergency Medicine</option>
-                                <option value="Pediatrics">Pediatrics</option>
-                                <option value="Internal Medicine">Internal Medicine</option>
-                                <option value="Surgery">Surgery</option>
-                                <option value="Cardiology">Cardiology</option>
-                                <option value="Obstetrics">Obstetrics & Gynecology</option>
-                                <option value="Orthopedics">Orthopedics</option>
-                                <option value="Pharmacy">Pharmacy</option>
+                                <!-- Dynamic options loaded from clinic data -->
                             </select>
                         </div>
                         
@@ -404,17 +397,64 @@ function initializeMap() {
     }).addTo(map);
 }
 
-// Load clinics from API
+// Fetch and display clinics
 async function loadClinics() {
     try {
         const response = await fetch('/api/clinics');
-        allClinics = await response.json();
-        displayClinics(allClinics);
-        addMarkersToMap(allClinics);
+        if (response.ok) {
+            allClinics = await response.json();
+            
+            // Load unique specialties from clinic data
+            loadSpecialtyOptions();
+            
+            displayClinics(allClinics);
+            addMarkersToMap(allClinics);
+            
+            showSierraWingsNotification(`Loaded ${allClinics.length} medical facilities`, 'success');
+        } else {
+            throw new Error('Failed to load clinics');
+        }
     } catch (error) {
-        console.error('Failed to load clinics:', error);
+        console.error('Error loading clinics:', error);
+        document.getElementById('clinicsContainer').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Failed to load medical facilities. Please try again later.
+            </div>
+        `;
         showSierraWingsNotification('Failed to load medical facilities', 'error');
     }
+}
+
+// Load specialty options from clinic data
+function loadSpecialtyOptions() {
+    const specialtySet = new Set();
+    
+    allClinics.forEach(clinic => {
+        if (clinic.specialties) {
+            try {
+                const specialties = JSON.parse(clinic.specialties);
+                specialties.forEach(specialty => specialtySet.add(specialty));
+            } catch (e) {
+                // Handle plain text specialties
+                clinic.specialties.split(',').forEach(specialty => {
+                    specialtySet.add(specialty.trim());
+                });
+            }
+        }
+    });
+    
+    const specialtySelect = document.getElementById('specialtyFilter');
+    // Clear existing options except "All Specialties"
+    specialtySelect.innerHTML = '<option value="">All Specialties</option>';
+    
+    // Add unique specialties as options
+    Array.from(specialtySet).sort().forEach(specialty => {
+        const option = document.createElement('option');
+        option.value = specialty;
+        option.textContent = specialty;
+        specialtySelect.appendChild(option);
+    });
 }
 
 // Display clinics in cards
@@ -542,35 +582,67 @@ function addMarkersToMap(clinics) {
 
 // Filter clinics based on search criteria
 function filterClinics() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
     const locationFilter = document.getElementById('locationFilter').value;
     const specialtyFilter = document.getElementById('specialtyFilter').value;
     const emergencyFilter = document.getElementById('emergencyFilter').checked;
     
+    if (!allClinics || allClinics.length === 0) {
+        showSierraWingsNotification('No clinic data available to filter', 'warning');
+        return;
+    }
+    
     const filteredClinics = allClinics.filter(clinic => {
-        // Search term filter
-        const matchesSearch = !searchTerm || 
-            clinic.clinic_name.toLowerCase().includes(searchTerm) ||
-            clinic.address.toLowerCase().includes(searchTerm) ||
-            clinic.city.toLowerCase().includes(searchTerm) ||
-            (clinic.description && clinic.description.toLowerCase().includes(searchTerm));
+        // Search term filter - comprehensive search
+        const matchesSearch = !searchTerm || [
+            clinic.clinic_name,
+            clinic.address,
+            clinic.city,
+            clinic.region,
+            clinic.description,
+            clinic.license_number
+        ].some(field => field && field.toLowerCase().includes(searchTerm));
         
         // Location filter
         const matchesLocation = !locationFilter || clinic.city === locationFilter;
         
-        // Specialty filter
-        const specialties = clinic.specialties ? JSON.parse(clinic.specialties) : [];
-        const matchesSpecialty = !specialtyFilter || specialties.includes(specialtyFilter);
+        // Specialty filter - handle both JSON and plain text
+        let matchesSpecialty = !specialtyFilter;
+        if (specialtyFilter && clinic.specialties) {
+            try {
+                const specialties = JSON.parse(clinic.specialties);
+                matchesSpecialty = specialties.includes(specialtyFilter);
+            } catch (e) {
+                // Handle plain text specialties
+                const specialties = clinic.specialties.split(',').map(s => s.trim());
+                matchesSpecialty = specialties.includes(specialtyFilter);
+            }
+        }
         
-        // Emergency filter
-        const operatingHours = clinic.operating_hours ? JSON.parse(clinic.operating_hours) : {};
-        const matchesEmergency = !emergencyFilter || operatingHours.emergency_24_7;
+        // Emergency filter - check operating hours
+        let matchesEmergency = !emergencyFilter;
+        if (emergencyFilter) {
+            try {
+                const operatingHours = clinic.operating_hours ? JSON.parse(clinic.operating_hours) : {};
+                matchesEmergency = operatingHours.emergency_24_7 === true;
+            } catch (e) {
+                matchesEmergency = false;
+            }
+        }
         
         return matchesSearch && matchesLocation && matchesSpecialty && matchesEmergency;
     });
     
     displayClinics(filteredClinics);
     addMarkersToMap(filteredClinics);
+    
+    // Show filter results notification
+    const filterCount = filteredClinics.length;
+    const totalCount = allClinics.length;
+    
+    if (searchTerm || locationFilter || specialtyFilter || emergencyFilter) {
+        showSierraWingsNotification(`Found ${filterCount} of ${totalCount} clinics matching your criteria`, 'info');
+    }
 }
 
 // Center map on specific clinic

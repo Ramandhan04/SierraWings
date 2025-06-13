@@ -1,52 +1,81 @@
-/* SierraWings Emergency Drone Delivery System Custom Styles */
+/* SierraWings Custom Styles */
 :root {
-    --sw-primary: #1e3a8a;
-    --sw-secondary: #3b82f6;
-    --sw-accent: #06b6d4;
-    --sw-success: #10b981;
-    --sw-warning: #f59e0b;
-    --sw-danger: #ef4444;
-    --sw-dark: #1f2937;
-    --sw-light: #f8fafc;
-    --sw-gray: #6b7280;
+    --primary-color: #0ea5e9;
+    --primary-dark: #0284c7;
+    --secondary-color: #8b5cf6;
+    --accent-color: #f59e0b;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --info-color: #06b6d4;
+    --background-light: #f8fafc;
+    --background-white: #ffffff;
+    --text-dark: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
 }
 
-/* Body background with medical drone imagery */
 body {
-    background: linear-gradient(rgba(30, 58, 138, 0.8), rgba(30, 58, 138, 0.6)), 
-                url('/static/images/drone-background.jpg') center/cover no-repeat fixed;
-    min-height: 100vh;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--background-light);
+    color: var(--text-dark);
+    font-weight: 400;
+    line-height: 1.6;
+    letter-spacing: -0.025em;
 }
 
-/* Override Bootstrap primary color */
-.btn-primary {
-    background-color: var(--sw-primary);
-    border-color: var(--sw-primary);
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: var(--text-dark);
+    letter-spacing: -0.025em;
 }
 
-.btn-primary:hover {
-    background-color: #1e40af;
-    border-color: #1e40af;
-}
-
-.bg-primary {
-    background-color: var(--sw-primary) !important;
-}
-
-.text-primary {
-    color: var(--sw-primary) !important;
-}
-
-/* Navigation Styling */
-.navbar-brand img {
-    filter: none; /* Keep original medical drone logo colors */
-    background: rgba(255, 255, 255, 0.9);
-    padding: 4px;
+/* Navbar Customization */
+.navbar-brand {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: #ffffff !important;
 }
 
 .navbar {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
+    box-shadow: 0 2px 20px rgba(14, 165, 233, 0.15);
     backdrop-filter: blur(10px);
-    background-color: rgba(30, 58, 138, 0.95) !important;
+}
+
+.navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+/* Button Customizations */
+.btn {
+    font-weight: 500;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border: none;
+    color: white;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary-color));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
 }
 
 /* Main Content */
