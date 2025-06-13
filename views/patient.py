@@ -37,12 +37,16 @@ def dashboard():
     in_flight_missions = len([m for m in missions if m.status == 'in_flight'])
     completed_missions = len([m for m in missions if m.status == 'completed'])
     
+    # Get available clinics for delivery requests
+    available_clinics = ClinicProfile.query.filter_by(is_verified=True, is_active=True).all()
+    
     return render_template('patient.html', 
                          missions=missions,
                          total_missions=total_missions,
                          pending_missions=pending_missions,
                          in_flight_missions=in_flight_missions,
-                         completed_missions=completed_missions)
+                         completed_missions=completed_missions,
+                         available_clinics=available_clinics)
 
 @bp.route('/request-delivery', methods=['POST'])
 @login_required
