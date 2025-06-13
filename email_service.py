@@ -35,6 +35,7 @@ def send_email(to_email, from_email, subject, text_content=None, html_content=No
         return False
 
 def send_welcome_email(user_email, user_name, role):
+    from datetime import datetime
     """Send welcome email to new users"""
     subject = "Welcome to SierraWings Emergency Drone Delivery"
     
