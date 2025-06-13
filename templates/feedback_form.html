@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Feedback & Suggestions - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-lg">
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h3 class="mb-0">
+                        <i class="fas fa-comments me-2"></i>Share Your Feedback
+                    </h3>
+                    <p class="mb-0">Help us improve SierraWings for better medical deliveries</p>
+                </div>
+                
+                <div class="card-body p-5">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="subject" class="form-label">Subject *</label>
+                                <input type="text" class="form-control" id="subject" name="subject" 
+                                       placeholder="Brief description of your feedback" required>
+                            </div>
+                            
+                            <div class="col-md-4 mb-3">
+                                <label for="category" class="form-label">Category *</label>
+                                <select class="form-select" id="category" name="category" required>
+                                    <option value="general">General Feedback</option>
+                                    <option value="bug_report">Bug Report</option>
+                                    <option value="feature_request">Feature Request</option>
+                                    <option value="delivery_issue">Delivery Issue</option>
+                                    <option value="payment_issue">Payment Issue</option>
+                                    <option value="user_experience">User Experience</option>
+                                    <option value="clinic_service">Clinic Service</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="rating" class="form-label">Overall Rating *</label>
+                            <div class="rating-input">
+                                <div class="star-rating">
+                                    <input type="radio" id="star5" name="rating" value="5" required>
+                                    <label for="star5" title="Excellent"><i class="fas fa-star"></i></label>
+                                    
+                                    <input type="radio" id="star4" name="rating" value="4">
+                                    <label for="star4" title="Good"><i class="fas fa-star"></i></label>
+                                    
+                                    <input type="radio" id="star3" name="rating" value="3">
+                                    <label for="star3" title="Average"><i class="fas fa-star"></i></label>
+                                    
+                                    <input type="radio" id="star2" name="rating" value="2">
+                                    <label for="star2" title="Poor"><i class="fas fa-star"></i></label>
+                                    
+                                    <input type="radio" id="star1" name="rating" value="1">
+                                    <label for="star1" title="Very Poor"><i class="fas fa-star"></i></label>
+                                </div>
+                                <small class="form-text text-muted">Rate your overall experience with SierraWings</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="message" class="form-label">Detailed Feedback *</label>
+                            <textarea class="form-control" id="message" name="message" rows="6" 
+                                      placeholder="Please provide detailed feedback, suggestions, or report any issues you've encountered..." required></textarea>
+                            <div class="form-text">Be specific about what worked well and what could be improved</div>
+                        </div>
+                        
+                        <!-- Feedback Guidelines -->
+                        <div class="feedback-guidelines bg-light p-4 rounded mb-4">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-lightbulb me-2"></i>Feedback Guidelines
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-success">What to Include:</h6>
+                                    <ul class="small text-muted">
+                                        <li>Specific examples of issues</li>
+                                        <li>Steps to reproduce problems</li>
+                                        <li>Suggestions for improvements</li>
+                                        <li>Positive experiences</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-info">Response Time:</h6>
+                                    <ul class="small text-muted">
+                                        <li>General feedback: 2-3 business days</li>
+                                        <li>Bug reports: 1-2 business days</li>
+                                        <li>Critical issues: Within 24 hours</li>
+                                        <li>Feature requests: 1 week</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Feedback
+                            </button>
+                            <a href="{{ url_for('feedback.my_feedback') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-history me-2"></i>View My Previous Feedback
+                            </a>
+                            <a href="{{ url_for(current_user.role + '.dashboard') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.star-rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+
+.star-rating input {
+    display: none;
+}
+
+.star-rating label {
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ddd;
+    font-size: 20px;
+    transition: color 0.2s ease;
+}
+
+.star-rating label:hover,
+.star-rating label:hover ~ label,
+.star-rating input:checked ~ label {
+    color: #ffc107;
+}
+
+.star-rating label:hover {
+    transform: scale(1.1);
+}
+
+.feedback-guidelines {
+    border-left: 4px solid #007bff;
+}
+
+.rating-input {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Focus on subject field
+    document.getElementById('subject').focus();
+    
+    // Update rating text based on selection
+    const ratingInputs = document.querySelectorAll('input[name="rating"]');
+    ratingInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const ratingText = {
+                '5': 'Excellent',
+                '4': 'Good', 
+                '3': 'Average',
+                '2': 'Poor',
+                '1': 'Very Poor'
+            };
+            
+            console.log('Rating selected:', ratingText[this.value]);
+        });
+    });
+});
+</script>
+{% endblock %}
