@@ -11,6 +11,7 @@ class User(UserMixin, db.Model):
     last_name = db.Column(db.String(50), nullable=False)
     phone = db.Column(db.String(20))
     address = db.Column(db.Text)
+    profile_photo = db.Column(db.String(255))  # Path to profile photo
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     
