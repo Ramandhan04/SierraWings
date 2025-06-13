@@ -9,8 +9,10 @@ import secrets
 
 bp = Blueprint('hospital', __name__)
 
-def clinic_required(f):
-    """Decorator to ensure user has clinic role"""
+def hospital_clinic_required(f):
+    """Decorator to ensure user has clinic role for hospital functions"""
+    from functools import wraps
+    @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or current_user.role != 'clinic':
             flash('Access denied. Clinic access required.', 'error')
@@ -40,7 +42,7 @@ def log_data_access(patient_id, action_type, data_category, purpose, legal_basis
 
 @bp.route('/patients')
 @login_required
-@clinic_required
+@hospital_clinic_required
 def patient_list():
     """Display hospital's patient list with data isolation"""
     if not current_user.clinic_profile:
@@ -60,7 +62,7 @@ def patient_list():
 
 @bp.route('/patients/register', methods=['GET', 'POST'])
 @login_required
-@clinic_required
+@hospital_clinic_required
 def register_patient():
     """Register new patient with GDPR compliance"""
     if request.method == 'POST':
@@ -120,7 +122,7 @@ def register_patient():
 
 @bp.route('/patients/<int:patient_id>')
 @login_required
-@clinic_required
+@hospital_clinic_required
 def patient_detail(patient_id):
     """View patient details with access control"""
     patient = HospitalPatient.query.filter_by(
@@ -141,7 +143,7 @@ def patient_detail(patient_id):
 
 @bp.route('/patients/<int:patient_id>/medical-record', methods=['GET', 'POST'])
 @login_required
-@clinic_required
+@hospital_clinic_required
 def add_medical_record(patient_id):
     """Add medical record for patient"""
     patient = HospitalPatient.query.filter_by(
@@ -197,7 +199,7 @@ def add_medical_record(patient_id):
 
 @bp.route('/data-requests')
 @login_required
-@clinic_required
+@hospital_clinic_required
 def data_requests():
     """View cross-hospital data sharing requests"""
     outgoing_requests = PatientDataRequest.query.filter_by(
@@ -208,7 +210,7 @@ def data_requests():
 
 @bp.route('/request-patient-data', methods=['GET', 'POST'])
 @login_required
-@clinic_required
+@hospital_clinic_required
 def request_patient_data():
     """Request patient data from another hospital"""
     if request.method == 'POST':
@@ -237,7 +239,7 @@ def request_patient_data():
 
 @bp.route('/search-patient-records')
 @login_required
-@clinic_required
+@hospital_clinic_required
 def search_patient_records():
     """Search for patient records from other hospitals (patient-authorized only)"""
     patient_name = request.args.get('patient_name', '').strip()
@@ -275,7 +277,7 @@ def search_patient_records():
 
 @bp.route('/gdpr-compliance')
 @login_required
-@clinic_required
+@hospital_clinic_required
 def gdpr_compliance():
     """GDPR compliance dashboard"""
     # Get data processing logs for this clinic
