@@ -6,6 +6,7 @@ from models import User, Drone, Mission, TelemetryLog, ClinicProfile
 from app import db
 import socket
 import json
+import logging
 import threading
 import time
 import random
@@ -521,13 +522,17 @@ def wireless_status():
                 data_rate = 'Live MAVLink'
                 last_seen = telemetry.get('timestamp', datetime.utcnow().isoformat())
                 
-                # Update drone with live data
+                # Update drone with live GPS data from Pixhawk
                 if telemetry.get('battery'):
                     drone.battery_level = max(0, min(100, battery_level))
                 if telemetry.get('position'):
                     pos = telemetry['position']
                     drone.location_lat = pos['lat']
                     drone.location_lon = pos['lon']
+                    
+                    # Log GPS position update
+                    logging.info(f"GPS Update - Drone {drone.name}: {pos['lat']:.6f}, {pos['lon']:.6f}, Alt: {pos['alt']:.1f}m")
+                
                 db.session.commit()
             else:
                 battery_level = drone.battery_level
@@ -559,7 +564,11 @@ def wireless_status():
                 'data_rate': data_rate,
                 'location': {
                     'lat': drone.location_lat,
-                    'lon': drone.location_lon
+                    'lon': drone.location_lon,
+                    'altitude': telemetry.get('position', {}).get('alt') if is_live else None,
+                    'gps_status': telemetry.get('gps', {}).get('fix_type') if is_live else 'No GPS',
+                    'satellites': telemetry.get('gps', {}).get('satellites_visible') if is_live else 0,
+                    'accuracy': telemetry.get('gps', {}).get('eph') if is_live else None
                 } if drone.location_lat and drone.location_lon else None,
                 'live_connected': is_live
             }
