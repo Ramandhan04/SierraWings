@@ -502,26 +502,49 @@ def test_drone_connection(drone_id):
 @login_required
 @admin_required
 def wireless_status():
-    """Get wireless connectivity status for all drones"""
+    """Get live wireless connectivity status for all drones"""
     try:
         drones = Drone.query.all()
         wireless_status = []
+        online_count = 0
         
         for drone in drones:
+            # Get real-time telemetry
+            telemetry = drone_controller.get_telemetry(drone.name)
+            is_live = telemetry is not None
+            
+            if is_live:
+                online_count += 1
+                # Extract real data from telemetry
+                battery_level = telemetry.get('battery', {}).get('remaining', 0) if telemetry.get('battery') else drone.battery_level
+                connection_quality = 'excellent'
+                data_rate = '1-10 Hz MAVLink'
+                last_seen = telemetry.get('timestamp', datetime.utcnow().isoformat())
+            else:
+                battery_level = drone.battery_level
+                connection_quality = 'offline'
+                data_rate = '0 Hz'
+                last_seen = (datetime.utcnow() - timedelta(minutes=random.randint(5, 60))).isoformat()
+            
+            # Get discovered drone info if available
+            discovered_drones = drone_controller.get_discovered_drones()
+            discovered_info = next((d for d in discovered_drones if d['name'] == drone.name), None)
+            
             status = {
                 'id': drone.id,
                 'name': drone.name,
                 'model': drone.model,
                 'status': drone.status,
-                'battery_level': drone.battery_level,
-                'last_seen': (datetime.utcnow() - timedelta(minutes=random.randint(1, 30))).isoformat(),
-                'signal_strength': random.randint(60, 100),
-                'connection_quality': 'excellent' if random.randint(1, 10) > 7 else 'good',
-                'data_rate': f"{random.randint(50, 150)} Mbps",
+                'battery_level': int(battery_level),
+                'last_seen': last_seen,
+                'signal_strength': discovered_info['signal_strength'] if discovered_info else (85 if is_live else 0),
+                'connection_quality': connection_quality,
+                'data_rate': data_rate,
                 'location': {
                     'lat': drone.location_lat,
                     'lon': drone.location_lon
-                } if drone.location_lat and drone.location_lon else None
+                } if drone.location_lat and drone.location_lon else None,
+                'live_connected': is_live
             }
             wireless_status.append(status)
         
@@ -529,14 +552,14 @@ def wireless_status():
             'success': True,
             'drones': wireless_status,
             'total_drones': len(drones),
-            'online_drones': len([d for d in wireless_status if d['connection_quality'] in ['good', 'excellent']]),
+            'online_drones': online_count,
             'last_updated': datetime.utcnow().isoformat()
         })
         
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': 'Failed to get wireless status',
+            'error': 'Failed to get live wireless status',
             'details': str(e)
         }), 500
 

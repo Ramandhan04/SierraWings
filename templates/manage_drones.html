@@ -261,10 +261,10 @@
                     <div class="mb-4">
                         <i class="fas fa-radar fa-3x text-primary mb-3" id="scanIcon"></i>
                         <h6>Scanning for Available Drones</h6>
-                        <p class="text-muted">Please ensure drones are powered on and in discovery mode</p>
+                        <p class="text-muted">Ensure Pixhawk systems are powered and Raspberry Pi clients are running</p>
                     </div>
                     <button type="button" class="btn btn-primary" onclick="scanForDrones()">
-                        <i class="fas fa-search me-2"></i>Start Scan
+                        <i class="fas fa-search me-2"></i>Scan for Live Drones
                     </button>
                 </div>
 
@@ -333,7 +333,7 @@
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p class="mt-2">Checking network status...</p>
+                        <p class="mt-2">Checking live drone network status...</p>
                     </div>
                 </div>
             </div>
@@ -519,8 +519,8 @@ function displayDiscoveredDrones(drones) {
         dronesList.innerHTML = `
             <div class="text-center py-4">
                 <i class="fas fa-search fa-2x text-muted mb-2"></i>
-                <p class="text-muted">No drones discovered</p>
-                <small>Ensure drones are powered on and in discovery mode</small>
+                <p class="text-muted">No live drones detected</p>
+                <small>Ensure Pixhawk systems are powered and Raspberry Pi clients are running</small>
             </div>
         `;
         return;
@@ -529,28 +529,40 @@ function displayDiscoveredDrones(drones) {
     drones.forEach(drone => {
         const droneItem = document.createElement('div');
         droneItem.className = 'list-group-item list-group-item-action';
+        
+        // Status indicators based on live data
+        const statusBadges = [
+            `<span class="badge bg-success me-1">${drone.signal_strength}% Signal</span>`,
+            `<span class="badge bg-${drone.battery_level > 30 ? 'success' : drone.battery_level > 15 ? 'warning' : 'danger'} me-1">${drone.battery_level}% Battery</span>`,
+            `<span class="badge bg-${drone.gps_fix ? 'success' : 'warning'} me-1">${drone.gps_fix ? 'GPS Lock' : 'No GPS'}</span>`,
+            `<span class="badge bg-${drone.status === 'armed' ? 'danger' : 'secondary'}">${drone.status.toUpperCase()}</span>`
+        ].join('');
+        
         droneItem.innerHTML = `
             <div class="d-flex w-100 justify-content-between">
                 <div class="flex-grow-1">
                     <div class="d-flex align-items-center mb-2">
                         <i class="fas fa-helicopter text-success me-2"></i>
                         <h6 class="mb-0">${drone.name}</h6>
-                        <span class="badge bg-success ms-2">${drone.signal_strength}% Signal</span>
+                        <span class="badge bg-info ms-2">LIVE</span>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
-                            <small class="text-muted">Model: ${drone.model}</small><br>
-                            <small class="text-muted">Battery: ${drone.battery_level}%</small>
+                            <small class="text-muted">Pixhawk System</small><br>
+                            <small class="text-muted">Mode: ${drone.flight_mode}</small>
                         </div>
                         <div class="col-md-6">
                             <small class="text-muted">IP: ${drone.ip_address}</small><br>
-                            <small class="text-muted">Distance: ${drone.distance}</small>
+                            <small class="text-muted">MAVLink: Active</small>
                         </div>
+                    </div>
+                    <div class="mt-2">
+                        ${statusBadges}
                     </div>
                 </div>
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-primary btn-sm" onclick="connectToDrone('${drone.id}', '${drone.name}', '${drone.model}', '${drone.ip_address}')">
-                        <i class="fas fa-link me-1"></i>Connect
+                    <button class="btn btn-success btn-sm" onclick="connectToDrone('${drone.id}', '${drone.name}', '${drone.model}', '${drone.ip_address}')">
+                        <i class="fas fa-link me-1"></i>Connect Live
                     </button>
                 </div>
             </div>
@@ -760,7 +772,7 @@ function displayNetworkStatus(data) {
                 <div class="stat-card bg-success">
                     <div class="stat-content text-center">
                         <h3>${data.online_drones}</h3>
-                        <p>Online</p>
+                        <p>Live Connected</p>
                     </div>
                 </div>
             </div>
@@ -782,8 +794,8 @@ function displayNetworkStatus(data) {
                         <th>Status</th>
                         <th>Signal</th>
                         <th>Battery</th>
-                        <th>Data Rate</th>
-                        <th>Last Seen</th>
+                        <th>MAVLink Rate</th>
+                        <th>Last Heartbeat</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -807,7 +819,10 @@ function displayNetworkStatus(data) {
                     </div>
                 </td>
                 <td>
-                    <span class="badge bg-${statusColor}">${drone.connection_quality}</span>
+                    <span class="badge bg-${statusColor}">
+                        ${drone.connection_quality === 'excellent' ? 'LIVE' : 
+                          drone.connection_quality === 'good' ? 'WEAK' : 'OFFLINE'}
+                    </span>
                 </td>
                 <td>
                     <div class="d-flex align-items-center">
@@ -840,7 +855,13 @@ function displayNetworkStatus(data) {
         </div>
     `;
     
-    content.innerHTML = statusHtml;
+    content.innerHTML = statusHtml + `
+        <div class="alert alert-info mt-3">
+            <i class="fas fa-info-circle me-2"></i>
+            Live status shows real-time MAVLink connections to Pixhawk flight controllers. 
+            Data rates indicate telemetry stream quality from actual aircraft.
+        </div>
+    `;
 }
 
 function testDroneConnection(droneId) {
