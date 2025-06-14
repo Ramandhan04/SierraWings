@@ -16,7 +16,7 @@
                     <p class="text-muted mb-0">Monitor and manage your drone fleet</p>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDroneModal">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createDroneModal">
                         <i class="fas fa-plus me-2"></i>Add Drone
                     </button>
                     <button class="btn btn-info" onclick="checkWirelessStatus()">
@@ -211,22 +211,17 @@
             <form method="POST" action="{{ url_for('admin.create_drone') }}" class="needs-validation" novalidate>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="name" class="form-label">Drone Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required 
-                               placeholder="e.g., SW-004">
+                        <label for="droneName" class="form-label">Drone Name</label>
+                        <input type="text" class="form-control" id="droneName" name="name" required 
+                               placeholder="e.g., Sierra-Wings-01">
                         <div class="invalid-feedback">Drone name is required.</div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="model" class="form-label">Model</label>
-                        <select class="form-select" id="model" name="model" required>
-                            <option value="">Select model</option>
-                            <option value="SierraWings Medical">SierraWings Medical</option>
-                            <option value="SierraWings Emergency">SierraWings Emergency</option>
-                            <option value="SierraWings Standard">SierraWings Standard</option>
-                            <option value="SierraWings Heavy Lift">SierraWings Heavy Lift</option>
-                        </select>
-                        <div class="invalid-feedback">Please select a model.</div>
+                        <label for="droneModel" class="form-label">Model</label>
+                        <input type="text" class="form-control" id="droneModel" name="model" required 
+                               placeholder="e.g., Custom Pixhawk, ArduCopter">
+                        <div class="invalid-feedback">Drone model is required.</div>
                     </div>
                     
                     <div class="mb-3">
@@ -262,7 +257,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Add Drone
+                        <i class="fas fa-plus me-2"></i>Add Drone
                     </button>
                 </div>
             </form>
@@ -1590,29 +1585,18 @@ function refreshDroneList() {
 }
 
 // Reset modal when closed
-document.getElementById('addDroneModal').addEventListener('hidden.bs.modal', function () {
-    // Clear live GPS interval
-    if (liveGpsInterval) {
-        clearInterval(liveGpsInterval);
+document.addEventListener('DOMContentLoaded', function() {
+    const createModal = document.getElementById('createDroneModal');
+    if (createModal) {
+        createModal.addEventListener('hidden.bs.modal', function () {
+            // Reset form
+            const form = createModal.querySelector('form');
+            if (form) {
+                form.reset();
+                form.classList.remove('was-validated');
+            }
+        });
     }
-    
-    // Reset form and data
-    document.getElementById('manualDroneForm').reset();
-    document.getElementById('wirelessDroneName').value = '';
-    document.getElementById('wirelessDroneModel').value = '';
-    document.getElementById('liveDronesList').innerHTML = `
-        <div class="text-center py-4">
-            <i class="fas fa-satellite-dish fa-2x text-muted mb-2"></i>
-            <p class="text-muted">Click "Scan Network" to discover live drones</p>
-        </div>
-    `;
-    document.getElementById('connectionStatus').classList.add('d-none');
-    document.getElementById('liveGpsData').classList.add('d-none');
-    
-    // Reset tab to manual entry
-    document.getElementById('manual-tab').click();
-    
-    selectedDrone = null;
 });
 
 // Global variables for live drone functionality
@@ -1620,8 +1604,8 @@ let selectedDrone = null;
 let selectedDroneData = null;
 let liveGpsInterval = null;
 
-// Check wireless network status
-function checkWirelessStatus() {
+// Check wireless network status - moved to global scope
+window.checkWirelessStatus = function() {
     const modal = new bootstrap.Modal(document.getElementById('networkStatusModal'));
     const content = document.getElementById('networkStatusContent');
     
@@ -1639,20 +1623,22 @@ function checkWirelessStatus() {
     fetch('/admin/drones/wireless-status')
     .then(response => response.json())
     .then(data => {
-        let statusHtml = '<h6>Network Status</h6>';
+        let statusHtml = '<h6>Live Network Status</h6>';
         
         if (data.success) {
             statusHtml += `
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle me-2"></i>
-                    Wireless network operational
+                    Wireless network operational - Discovery service running on port 8888
                 </div>
-                <h6>Discovered Drones (${data.wireless_status.length})</h6>
+                <h6>Discovered Live Drones (${data.wireless_status.length})</h6>
             `;
             
             if (data.wireless_status.length > 0) {
                 data.wireless_status.forEach(drone => {
                     const isConnected = drone.live_connected;
+                    const hasGPS = drone.location && drone.location.lat && drone.location.lon;
+                    
                     statusHtml += `
                         <div class="card mb-2">
                             <div class="card-body p-2">
@@ -1660,12 +1646,14 @@ function checkWirelessStatus() {
                                     <div>
                                         <strong>${drone.name}</strong>
                                         <span class="badge ${isConnected ? 'bg-success' : 'bg-warning'} ms-2">
-                                            ${isConnected ? 'Connected' : 'Discovered'}
+                                            ${isConnected ? 'Live Connected' : 'Discovered'}
                                         </span>
+                                        ${hasGPS ? '<span class="badge bg-info ms-1">GPS</span>' : ''}
                                     </div>
                                     <small class="text-muted">
                                         Battery: ${drone.battery_level}% | 
                                         Signal: ${drone.signal_strength}%
+                                        ${hasGPS ? ` | GPS: ${drone.location.lat.toFixed(4)}, ${drone.location.lon.toFixed(4)}` : ''}
                                     </small>
                                 </div>
                             </div>
@@ -1673,13 +1661,23 @@ function checkWirelessStatus() {
                     `;
                 });
             } else {
-                statusHtml += '<p class="text-muted">No drones found on network</p>';
+                statusHtml += `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No live drones found on network. Make sure:
+                        <ul class="mt-2 mb-0">
+                            <li>Pixhawk flight controllers are powered on</li>
+                            <li>Raspberry Pi clients are running drone service</li>
+                            <li>Devices are on the same wireless network</li>
+                        </ul>
+                    </div>
+                `;
             }
         } else {
             statusHtml += `
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    Network check failed: ${data.error}
+                    Network check failed: ${data.error || 'Unknown error'}
                 </div>
             `;
         }

@@ -249,10 +249,11 @@ def manage_drones():
     drones = Drone.query.order_by(Drone.created_at.desc()).all()
     return render_template('manage_drones.html', drones=drones)
 
-@bp.route('/drones/create', methods=['POST'])
+@bp.route('/create-drone', methods=['POST'])
 @login_required
 @admin_required
 def create_drone():
+    """Create a new drone with live Pixhawk connectivity"""
     try:
         name = request.form.get('name', '').strip()
         model = request.form.get('model', '').strip()
@@ -274,16 +275,26 @@ def create_drone():
         drone.model = model
         drone.status = 'available'
         drone.battery_level = 100
-        drone.location_lat = float(live_lat) if live_lat else None
-        drone.location_lon = float(live_lon) if live_lon else None
+        
+        # Set live GPS coordinates from Pixhawk if provided
+        if live_lat and live_lon:
+            try:
+                drone.location_lat = float(live_lat)
+                drone.location_lon = float(live_lon)
+                logging.info(f"Live GPS set for {name}: {live_lat}, {live_lon}")
+            except (ValueError, TypeError):
+                logging.warning(f"Invalid GPS coordinates for {name}: {live_lat}, {live_lon}")
         
         db.session.add(drone)
         db.session.commit()
-        flash('Drone created successfully.', 'success')
+        
+        flash(f'Drone "{name}" created successfully with live connectivity ready.', 'success')
+        logging.info(f"New drone created: {name} ({model})")
         
     except Exception as e:
         db.session.rollback()
         flash('An error occurred while creating the drone.', 'error')
+        logging.error(f"Drone creation error: {str(e)}")
     
     return redirect(url_for('admin.manage_drones'))
 
