@@ -466,38 +466,7 @@ def register_wireless_drone():
             'details': str(e)
         }), 500
 
-@bp.route('/drones/test-connection/<int:drone_id>', methods=['POST'])
-@login_required
-@admin_required
-def test_drone_connection(drone_id):
-    """Test connection with a registered drone"""
-    try:
-        drone = Drone.query.get(drone_id)
-        if not drone:
-            return jsonify({
-                'success': False,
-                'error': 'Drone not found'
-            }), 404
-        
-        # Test live connection using drone name as ID
-        test_result = drone_controller.test_connection(drone.name)
-        
-        if test_result['success']:
-            # Update drone battery level from real telemetry
-            telemetry = drone_controller.get_telemetry(drone.name)
-            if telemetry and telemetry.get('battery'):
-                battery_info = telemetry['battery']
-                drone.battery_level = max(0, min(100, battery_info.get('remaining', 0)))
-                db.session.commit()
-        
-        return jsonify(test_result)
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': 'Connection test failed',
-            'details': str(e)
-        }), 500
+
 
 @bp.route('/drones/wireless-status')
 @login_required
@@ -646,6 +615,94 @@ def send_drone_command():
         return jsonify({
             'success': False,
             'error': f'Command failed: {str(e)}'
+        }), 500
+
+@bp.route('/drones/test/<drone_name>')
+@login_required
+@admin_required
+def test_drone_live_connection(drone_name):
+    """Test live connection to specific drone"""
+    try:
+        # Test connection using drone controller
+        test_result = drone_controller.test_connection(drone_name)
+        
+        if test_result:
+            # Get live telemetry for comprehensive test
+            telemetry = drone_controller.get_telemetry(drone_name)
+            
+            return jsonify({
+                'success': True,
+                'test_results': test_result,
+                'telemetry': {
+                    'battery': telemetry.get('battery', {}).get('remaining', 0) if telemetry else 0,
+                    'gps_status': telemetry.get('gps', {}).get('fix_type', 'No GPS') if telemetry else 'No GPS',
+                    'satellites': telemetry.get('gps', {}).get('satellites_visible', 0) if telemetry else 0,
+                    'armed': telemetry.get('armed', False) if telemetry else False,
+                    'flight_mode': telemetry.get('flight_mode', 'Unknown') if telemetry else 'Unknown',
+                    'altitude': telemetry.get('position', {}).get('alt', 0) if telemetry else 0,
+                    'lat': telemetry.get('position', {}).get('lat', 0) if telemetry else 0,
+                    'lon': telemetry.get('position', {}).get('lon', 0) if telemetry else 0,
+                    'signal_strength': telemetry.get('signal_strength', 0) if telemetry else 0
+                }
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Connection test failed',
+                'test_results': {'ping_test': {'status': 'failed', 'error': 'No response'}}
+            }), 404
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Test failed: {str(e)}'
+        }), 500
+
+@bp.route('/drones/details/<drone_name>')
+@login_required
+@admin_required
+def get_drone_details(drone_name):
+    """Get detailed information about specific drone"""
+    try:
+        # Get drone from database
+        drone = Drone.query.filter_by(name=drone_name).first()
+        if not drone:
+            return jsonify({
+                'success': False,
+                'error': 'Drone not found in database'
+            }), 404
+        
+        # Get live telemetry
+        telemetry = drone_controller.get_telemetry(drone.name)
+        
+        # Prepare detailed response
+        details = {
+            'drone_info': {
+                'id': drone.id,
+                'name': drone.name,
+                'model': drone.model,
+                'status': drone.status,
+                'battery_level': drone.battery_level,
+                'location': {
+                    'lat': drone.location_lat,
+                    'lon': drone.location_lon
+                } if drone.location_lat and drone.location_lon else None,
+                'created_at': drone.created_at.isoformat(),
+                'last_maintenance': drone.last_maintenance.isoformat() if drone.last_maintenance else None
+            },
+            'live_telemetry': telemetry,
+            'connection_status': 'connected' if telemetry else 'offline'
+        }
+        
+        return jsonify({
+            'success': True,
+            'details': details
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get drone details: {str(e)}'
         }), 500
 
 @bp.route('/drones/telemetry/<int:drone_id>')
