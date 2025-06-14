@@ -38,6 +38,28 @@
                                         </label>
                                     </div>
                                 </div>
+                                <div class="col-md-12 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="role" id="admin" value="admin" onchange="toggleRoleFields()">
+                                        <label class="form-check-label" for="admin">
+                                            <i class="fas fa-cog me-2"></i>Administrator
+                                            <small class="d-block text-muted">Manage platform and operations</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Invite Code Field (hidden by default) -->
+                        <div class="mb-3" id="inviteCodeField" style="display: none;">
+                            <label for="invite_code" class="form-label">Invite Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="invite_code" name="invite_code" 
+                                   placeholder="Enter invitation code">
+                            <div class="form-text">
+                                <small class="text-warning">
+                                    <i class="fas fa-lock me-1"></i>
+                                    <span id="inviteCodeHelpText">Contact administration for access code</span>
+                                </small>
                             </div>
                         </div>
                         
@@ -161,8 +183,14 @@
 <script>
 function toggleRoleFields() {
     const patientSelected = document.getElementById('patient').checked;
+    const clinicSelected = document.getElementById('clinic').checked;
+    const adminSelected = document.getElementById('admin').checked;
+    
     const patientSection = document.getElementById('patientLocationSection');
     const clinicNotice = document.getElementById('clinicNotice');
+    const inviteCodeField = document.getElementById('inviteCodeField');
+    const inviteCodeInput = document.getElementById('invite_code');
+    const inviteCodeHelpText = document.getElementById('inviteCodeHelpText');
     const locationPermission = document.getElementById('locationPermission');
     const city = document.getElementById('city');
     const state = document.getElementById('state');
@@ -171,17 +199,45 @@ function toggleRoleFields() {
     if (patientSelected) {
         patientSection.style.display = 'block';
         clinicNotice.style.display = 'none';
+        inviteCodeField.style.display = 'none';
+        inviteCodeInput.required = false;
         
         // Make fields required for patients
         locationPermission.required = true;
         city.required = true;
         state.required = true;
         address.required = true;
-    } else {
+    } else if (clinicSelected) {
         patientSection.style.display = 'none';
         clinicNotice.style.display = 'block';
+        inviteCodeField.style.display = 'block';
+        inviteCodeInput.required = true;
+        inviteCodeHelpText.textContent = 'Contact medical facility administration for clinic access code (3499)';
         
         // Remove requirements for clinic registration
+        locationPermission.required = false;
+        city.required = false;
+        state.required = false;
+        address.required = false;
+    } else if (adminSelected) {
+        patientSection.style.display = 'none';
+        clinicNotice.style.display = 'none';
+        inviteCodeField.style.display = 'block';
+        inviteCodeInput.required = true;
+        inviteCodeHelpText.textContent = 'Contact system administrator for admin access code (7267)';
+        
+        // Remove requirements for admin registration
+        locationPermission.required = false;
+        city.required = false;
+        state.required = false;
+        address.required = false;
+    } else {
+        patientSection.style.display = 'none';
+        clinicNotice.style.display = 'none';
+        inviteCodeField.style.display = 'none';
+        inviteCodeInput.required = false;
+        
+        // Reset requirements
         locationPermission.required = false;
         city.required = false;
         state.required = false;
@@ -281,12 +337,26 @@ document.getElementById('registrationForm').addEventListener('submit', function(
     }
     
     const patientSelected = document.getElementById('patient').checked;
+    const clinicSelected = document.getElementById('clinic').checked;
+    const adminSelected = document.getElementById('admin').checked;
+    
     if (patientSelected) {
         const locationPermission = document.getElementById('locationPermission').checked;
         if (!locationPermission) {
             e.preventDefault();
             if (window.showSierraWingsNotification) {
                 showSierraWingsNotification('Please grant location access permission to register as a patient.', 'error');
+            }
+            return;
+        }
+    }
+    
+    if (clinicSelected || adminSelected) {
+        const inviteCode = document.getElementById('invite_code').value;
+        if (!inviteCode) {
+            e.preventDefault();
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification('Please enter the required invite code.', 'error');
             }
             return;
         }

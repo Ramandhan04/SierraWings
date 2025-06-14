@@ -88,11 +88,16 @@ def register():
             errors.append('Invalid role selected.')
         
         # Check invite code for clinic and admin roles
-        if role in ['clinic', 'admin']:
+        if role == 'clinic':
             if not invite_code:
-                errors.append(f'Invite code is required for {role} registration.')
-            elif invite_code != INVITE_CODES.get(role):
-                errors.append('Invalid invite code.')
+                errors.append('Invite code is required for clinic registration.')
+            elif invite_code != INVITE_CODES.get('clinic'):
+                errors.append('Invalid invite code for clinic registration. Contact administration for access.')
+        elif role == 'admin':
+            if not invite_code:
+                errors.append('Invite code is required for admin registration.')
+            elif invite_code != INVITE_CODES.get('admin'):
+                errors.append('Invalid invite code for admin registration. Contact system administrator for access.')
         
         # Check if email already exists
         if User.query.filter_by(email=email).first():

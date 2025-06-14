@@ -54,46 +54,58 @@ def dashboard():
 def request_delivery():
     try:
         # Get form data
-        payload_type = request.form.get('payload_type', '').strip()
-        payload_weight = request.form.get('payload_weight', type=float)
-        pickup_address = request.form.get('pickup_address', '').strip()
-        delivery_address = request.form.get('delivery_address', '').strip()
+        clinic_id = request.form.get('clinic_id')
+        payload_type = request.form.get('payload_type')
+        payload_weight = request.form.get('payload_weight')
+        pickup_address = request.form.get('pickup_address')
+        delivery_address = request.form.get('delivery_address')
         priority = request.form.get('priority', 'normal')
-        special_instructions = request.form.get('special_instructions', '').strip()
+        special_instructions = request.form.get('special_instructions', '')
         
         # Validation
-        if not all([payload_type, pickup_address, delivery_address]):
-            flash('Please fill in all required fields.', 'error')
+        if not all([clinic_id, payload_type, pickup_address, delivery_address]):
+            flash('Please fill in all required fields including clinic selection.', 'error')
             return redirect(url_for('patient.dashboard'))
         
-        if payload_weight and payload_weight <= 0:
-            flash('Payload weight must be greater than 0.', 'error')
+        # Verify clinic exists and is active
+        clinic = ClinicProfile.query.filter_by(id=clinic_id, is_verified=True, is_active=True).first()
+        if not clinic:
+            flash('Selected clinic is not available.', 'error')
             return redirect(url_for('patient.dashboard'))
         
-        # Create new mission
+        # Convert weight to float if provided
+        if payload_weight:
+            try:
+                payload_weight = float(payload_weight)
+                if payload_weight > 10:
+                    flash('Maximum payload weight is 10kg.', 'error')
+                    return redirect(url_for('patient.dashboard'))
+            except ValueError:
+                payload_weight = None
+        
+        # Create mission with clinic association
         mission = Mission(
             user_id=current_user.id,
             payload_type=payload_type,
             payload_weight=payload_weight,
-            pickup_address=pickup_address,
+            pickup_address=f"{clinic.clinic_name}, {pickup_address}",
             delivery_address=delivery_address,
             priority=priority,
-            special_instructions=special_instructions or None,
+            special_instructions=special_instructions,
             status='pending',
-            payment_status='pending'
+            notes=f"Clinic: {clinic.clinic_name} (ID: {clinic_id})"
         )
         
         db.session.add(mission)
         db.session.commit()
         
-        flash('Delivery request created successfully! Please complete payment to proceed with your medical delivery.', 'success')
-        return redirect(url_for('payment.select_payment', mission_id=mission.id))
+        flash(f'Delivery request submitted successfully to {clinic.clinic_name}!', 'success')
+        return redirect(url_for('patient.dashboard'))
         
     except Exception as e:
         db.session.rollback()
-        flash('An error occurred while submitting your request. Please try again.', 'error')
-    
-    return redirect(url_for('patient.dashboard'))
+        flash('An error occurred while submitting your request.', 'error')
+        return redirect(url_for('patient.dashboard'))
 
 @bp.route('/track/<int:mission_id>')
 @login_required
