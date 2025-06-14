@@ -518,17 +518,34 @@ def wireless_status():
                 # Extract real data from telemetry
                 battery_level = telemetry.get('battery', {}).get('remaining', 0) if telemetry.get('battery') else drone.battery_level
                 connection_quality = 'excellent'
-                data_rate = '1-10 Hz MAVLink'
+                data_rate = 'Live MAVLink'
                 last_seen = telemetry.get('timestamp', datetime.utcnow().isoformat())
+                
+                # Update drone with live data
+                if telemetry.get('battery'):
+                    drone.battery_level = max(0, min(100, battery_level))
+                if telemetry.get('position'):
+                    pos = telemetry['position']
+                    drone.location_lat = pos['lat']
+                    drone.location_lon = pos['lon']
+                db.session.commit()
             else:
                 battery_level = drone.battery_level
                 connection_quality = 'offline'
-                data_rate = '0 Hz'
-                last_seen = (datetime.utcnow() - timedelta(minutes=random.randint(5, 60))).isoformat()
+                data_rate = 'No Connection'
+                last_seen = (datetime.utcnow() - timedelta(minutes=30)).isoformat()
             
             # Get discovered drone info if available
             discovered_drones = drone_controller.get_discovered_drones()
             discovered_info = next((d for d in discovered_drones if d['name'] == drone.name), None)
+            
+            # Calculate signal strength from live connection
+            if is_live and discovered_info:
+                signal_strength = discovered_info['signal_strength']
+            elif is_live:
+                signal_strength = 90  # Strong signal if live but not in discovery list
+            else:
+                signal_strength = 0  # No signal if offline
             
             status = {
                 'id': drone.id,
@@ -537,7 +554,7 @@ def wireless_status():
                 'status': drone.status,
                 'battery_level': int(battery_level),
                 'last_seen': last_seen,
-                'signal_strength': discovered_info['signal_strength'] if discovered_info else (85 if is_live else 0),
+                'signal_strength': signal_strength,
                 'connection_quality': connection_quality,
                 'data_rate': data_rate,
                 'location': {

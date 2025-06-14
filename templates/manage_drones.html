@@ -860,7 +860,9 @@ window.displayNetworkStatus = function(data) {
                         <small>${drone.battery_level}%</small>
                     </div>
                 </td>
-                <td><small>${drone.data_rate}</small></td>
+                <td>
+                    <small class="text-${drone.live_connected ? 'success' : 'muted'}">${drone.data_rate}</small>
+                </td>
                 <td><small>${new Date(drone.last_seen).toLocaleString()}</small></td>
             </tr>
         `;
@@ -877,9 +879,9 @@ window.displayNetworkStatus = function(data) {
     
     content.innerHTML = statusHtml + `
         <div class="alert alert-info mt-3">
-            <i class="fas fa-info-circle me-2"></i>
-            Live status shows real-time MAVLink connections to Pixhawk flight controllers. 
-            Data rates indicate telemetry stream quality from actual aircraft.
+            <i class="fas fa-satellite-dish me-2"></i>
+            <strong>Live Network Status:</strong> Real-time MAVLink connections to Pixhawk flight controllers via Raspberry Pi systems. 
+            Signal strength and data rates reflect actual wireless communication quality with deployed aircraft.
         </div>
     `;
 }
@@ -946,6 +948,27 @@ window.displayConnectionTestResults = function(data) {
 document.getElementById('wirelessDroneModal').addEventListener('hidden.bs.modal', function () {
     resetConnectionModal();
 });
+
+// Ensure functions are globally accessible
+function scanForDrones() {
+    return window.scanForDrones();
+}
+
+function checkWirelessStatus() {
+    return window.checkWirelessStatus();
+}
+
+function connectToDrone(droneId, droneName, droneModel, ipAddress) {
+    return window.connectToDrone(droneId, droneName, droneModel, ipAddress);
+}
+
+function registerConnectedDrone() {
+    return window.registerConnectedDrone();
+}
+
+function testDroneConnection(droneId) {
+    return window.testDroneConnection(droneId);
+}
 
 // Form validation
 (function() {

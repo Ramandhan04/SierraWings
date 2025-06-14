@@ -27,6 +27,9 @@ class DroneController:
         self.telemetry_port = 14551
         self.discovery_port = 8888
         
+        # Auto-start the discovery service
+        self.start_server()
+        
     def start_server(self):
         """Start the drone communication server"""
         try:
@@ -39,7 +42,7 @@ class DroneController:
             self.scan_thread.daemon = True
             self.scan_thread.start()
             
-            logging.info("Drone controller server started on port %d", self.discovery_port)
+            logging.info("Live drone discovery service started on port %d", self.discovery_port)
             return True
             
         except Exception as e:
