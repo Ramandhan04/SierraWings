@@ -1,0 +1,45 @@
+Improve my existing AI web app (written in Python) with the following upgrades. I have already created the frontend and backend; I just need you to complete these features and connect them properly. Use Firebase as the backend database and make sure the following requirements are implemented fully and correctly:
+
+1. 🔐 USER AUTHENTICATION:
+- Use Firebase Authentication
+- Implement secure email/password registration
+- Add role-based access for:
+  - Admin (code: 7267)
+  - Hospital (code: 3499)
+  - Patient/Customer (no code needed)
+- Add secret code check during registration for Admin and Hospital
+- Prevent unauthenticated users from accessing protected pages
+
+2. ✅ EMAIL VERIFICATION & 2FA:
+- After registration, send a verification code to the user’s email
+- Before login is allowed, user must verify email via the code
+- Implement Two-Factor Authentication (2FA) by sending a unique OTP to the user's email at login
+- OTP must expire after a few minutes and be securely validated
+
+3. 📱 RESPONSIVE UI/UX DESIGN:
+- Make the entire web app mobile-friendly (iOS, Android)
+- Adjust layout for smaller screens using CSS media queries or responsive frameworks like Bootstrap or Tailwind
+- Make the interface adaptive for desktop views too — clean layout, not tight or broken
+- Use standard best practices for modern responsive UI
+
+4. ⚙️ FIREBASE CONNECTION:
+- Integrate Firebase Admin SDK in Python
+- Ensure Firebase Realtime Database or Firestore is connected and stores:
+  - User data (with roles)
+  - Auth verification logs
+  - Delivery requests and logs
+- Use environment variables for all Firebase credentials (DO NOT hardcode secrets)
+
+5. 💌 NOTIFICATIONS:
+- Send confirmation emails on:
+  - Successful registration
+  - OTP code for 2FA login
+  - Drone delivery request success
+- Use Python’s `smtplib` or a mail service like SendGrid or Gmail API
+
+6. 🚀 FINALIZE & TEST:
+- Make everything production-ready
+- Ensure the login and registration process is secure and works across all devices
+- Validate Firebase, OTP, and email services work end-to-end
+
+Work in the existing Python project. Do not generate a demo — make the code live and functional inside Replit with working Firebase + 2FA + UI improvements.
