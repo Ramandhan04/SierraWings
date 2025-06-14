@@ -456,23 +456,7 @@ body {
     border-left-color: var(--sierra-warning);
 }
 
-/* Theme Toggle Button */
-.theme-toggle {
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-}
 
-.theme-toggle:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: scale(1.05);
-}
 
 /* Dropdown Menu Fix */
 .dropdown-menu {
@@ -496,130 +480,7 @@ body {
     color: white;
 }
 
-/* Dark Theme */
-[data-theme="dark"] {
-    --sierra-light: #121212;
-    --sierra-dark: #ffffff;
-    --card-bg: #1e1e1e;
-    --input-bg: #2d2d2d;
-    --border-color: #404040;
-}
 
-[data-theme="dark"] body {
-    background: var(--sierra-light);
-    color: var(--sierra-dark);
-}
 
-[data-theme="dark"] .card {
-    background: var(--card-bg);
-    color: var(--sierra-dark);
-    border: 1px solid var(--border-color);
-}
 
-[data-theme="dark"] .card-header {
-    background: var(--sierra-gradient);
-    border-bottom: 1px solid var(--border-color);
-}
 
-[data-theme="dark"] .form-control, 
-[data-theme="dark"] .form-select {
-    background: var(--input-bg);
-    border-color: var(--border-color);
-    color: var(--sierra-dark);
-}
-
-[data-theme="dark"] .form-control:focus, 
-[data-theme="dark"] .form-select:focus {
-    background: var(--input-bg);
-    border-color: var(--sierra-primary);
-    color: var(--sierra-dark);
-    box-shadow: 0 0 0 0.2rem rgba(30, 60, 114, 0.25);
-}
-
-[data-theme="dark"] .table {
-    background: var(--card-bg);
-    color: var(--sierra-dark);
-}
-
-[data-theme="dark"] .table tbody tr {
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .table tbody tr:hover {
-    background: rgba(30, 60, 114, 0.1);
-}
-
-[data-theme="dark"] .dropdown-menu {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-}
-
-[data-theme="dark"] .dropdown-item {
-    color: var(--sierra-dark);
-}
-
-[data-theme="dark"] .dropdown-item:hover {
-    background: var(--sierra-primary);
-    color: white;
-}
-
-[data-theme="dark"] .modal-content {
-    background: var(--card-bg);
-    color: var(--sierra-dark);
-    border: 1px solid var(--border-color);
-}
-
-[data-theme="dark"] .modal-header {
-    border-bottom: 1px solid var(--border-color);
-}
-
-[data-theme="dark"] .modal-footer {
-    border-top: 1px solid var(--border-color);
-}
-
-[data-theme="dark"] .alert {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    color: var(--sierra-dark);
-}
-
-[data-theme="dark"] .text-muted {
-    color: #9ca3af !important;
-}
-
-[data-theme="dark"] .border-danger {
-    border-color: var(--sierra-danger) !important;
-}
-
-[data-theme="dark"] .bg-danger {
-    background: var(--sierra-danger) !important;
-}
-
-/* Ensure text readability in dark mode */
-[data-theme="dark"] .stat-card {
-    color: white;
-}
-
-[data-theme="dark"] .navbar {
-    background: linear-gradient(135deg, #0f1419 0%, #1a252f 100%) !important;
-}
-
-/* Light theme (default) */
-[data-theme="light"] {
-    --sierra-light: #f8f9fa;
-    --sierra-dark: #212529;
-    --card-bg: #ffffff;
-    --input-bg: #ffffff;
-    --border-color: #e9ecef;
-}
-
-/* Smooth transitions for theme changes */
-* {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-
-/* Preserve specific elements that shouldn't change */
-.btn-primary, .btn-danger, .btn-success, .btn-warning, .btn-info,
-.stat-card, .navbar {
-    transition: none;
-}
