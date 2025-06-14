@@ -9,6 +9,7 @@ import json
 import threading
 import time
 import random
+from drone_controller import drone_controller
 
 bp = Blueprint('admin', __name__)
 
@@ -315,26 +316,19 @@ def delete_drone(drone_id):
 def scan_wireless_drones():
     """Scan for available wireless drones on the network"""
     try:
-        # Simulate network scan for drones
-        discovered_drones = []
+        # Start drone controller if not running
+        if not drone_controller.running:
+            if not drone_controller.start_server():
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to start drone discovery service'
+                }), 500
         
-        # In a real implementation, this would scan network for drone WiFi signals
-        # For demonstration, we'll simulate finding drones
-        drone_types = ['DJI Mavic 3', 'Autel EVO II', 'Skydio 2+', 'Parrot ANAFI', 'Yuneec Typhoon H']
+        # Wait a moment for discovery
+        time.sleep(2)
         
-        for i in range(random.randint(2, 5)):
-            drone_id = f"SW-{random.randint(1000, 9999)}"
-            discovered_drones.append({
-                'id': drone_id,
-                'name': f"SierraWings-{drone_id}",
-                'model': random.choice(drone_types),
-                'signal_strength': random.randint(70, 100),
-                'battery_level': random.randint(50, 100),
-                'firmware_version': f"v{random.randint(1, 3)}.{random.randint(0, 9)}.{random.randint(0, 9)}",
-                'ip_address': f"192.168.1.{random.randint(100, 200)}",
-                'status': 'discoverable',
-                'distance': f"{random.randint(10, 500)}m"
-            })
+        # Get discovered drones
+        discovered_drones = drone_controller.get_discovered_drones()
         
         return jsonify({
             'success': True,
@@ -375,28 +369,35 @@ def connect_wireless_drone():
                 'error': 'Drone already registered in the system'
             }), 400
         
-        # Simulate connection process
-        connection_steps = [
-            {'step': 1, 'message': 'Establishing wireless connection...', 'progress': 20},
-            {'step': 2, 'message': 'Authenticating with drone...', 'progress': 40},
-            {'step': 3, 'message': 'Downloading drone configuration...', 'progress': 60},
-            {'step': 4, 'message': 'Syncing flight parameters...', 'progress': 80},
-            {'step': 5, 'message': 'Connection established successfully!', 'progress': 100}
-        ]
+        # Establish MAVLink connection
+        success, message = drone_controller.connect_to_drone(drone_id, ip_address)
         
-        # In a real implementation, this would establish actual wireless connection
-        # For now, we'll simulate the connection process
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': message
+            }), 400
+        
+        # Real connection steps
+        connection_steps = [
+            {'step': 1, 'message': 'Establishing MAVLink connection...', 'progress': 20},
+            {'step': 2, 'message': 'Waiting for Pixhawk heartbeat...', 'progress': 40},
+            {'step': 3, 'message': 'Synchronizing flight parameters...', 'progress': 60},
+            {'step': 4, 'message': 'Requesting system information...', 'progress': 80},
+            {'step': 5, 'message': 'Live connection established!', 'progress': 100}
+        ]
         
         return jsonify({
             'success': True,
-            'connection_id': f"conn_{drone_id}_{int(time.time())}",
+            'connection_id': f"live_conn_{drone_id}_{int(time.time())}",
             'steps': connection_steps,
             'drone_info': {
                 'id': drone_id,
                 'name': drone_name,
                 'model': drone_model,
                 'ip_address': ip_address,
-                'connected_at': datetime.utcnow().isoformat()
+                'connected_at': datetime.utcnow().isoformat(),
+                'connection_type': 'live_mavlink'
             }
         })
         
@@ -477,25 +478,18 @@ def test_drone_connection(drone_id):
                 'error': 'Drone not found'
             }), 404
         
-        # Simulate connection test
-        test_results = {
-            'ping_test': {'status': 'success', 'latency': f"{random.randint(10, 50)}ms"},
-            'telemetry_test': {'status': 'success', 'data_rate': f"{random.randint(50, 100)} packets/sec"},
-            'command_test': {'status': 'success', 'response_time': f"{random.randint(100, 300)}ms"},
-            'battery_check': {'status': 'success', 'level': f"{random.randint(70, 100)}%"},
-            'gps_lock': {'status': 'success', 'satellites': random.randint(8, 15)}
-        }
+        # Test live connection using drone name as ID
+        test_result = drone_controller.test_connection(drone.name)
         
-        # Update drone battery level
-        drone.battery_level = random.randint(70, 100)
-        db.session.commit()
+        if test_result['success']:
+            # Update drone battery level from real telemetry
+            telemetry = drone_controller.get_telemetry(drone.name)
+            if telemetry and telemetry.get('battery'):
+                battery_info = telemetry['battery']
+                drone.battery_level = max(0, min(100, battery_info.get('remaining', 0)))
+                db.session.commit()
         
-        return jsonify({
-            'success': True,
-            'drone_name': drone.name,
-            'test_results': test_results,
-            'tested_at': datetime.utcnow().isoformat()
-        })
+        return jsonify(test_result)
         
     except Exception as e:
         return jsonify({
@@ -544,6 +538,110 @@ def wireless_status():
             'success': False,
             'error': 'Failed to get wireless status',
             'details': str(e)
+        }), 500
+
+@bp.route('/drones/live-control')
+@login_required
+@admin_required
+def live_drone_control():
+    """Live drone control interface"""
+    # Get all registered drones
+    drones = Drone.query.order_by(Drone.created_at.desc()).all()
+    
+    # Get live status for connected drones
+    live_drones = []
+    for drone in drones:
+        telemetry = drone_controller.get_telemetry(drone.name)
+        live_info = {
+            'id': drone.id,
+            'name': drone.name,
+            'model': drone.model,
+            'status': drone.status,
+            'live_connected': telemetry is not None,
+            'telemetry': telemetry
+        }
+        live_drones.append(live_info)
+    
+    return render_template('live_drone_control.html', drones=live_drones)
+
+@bp.route('/drones/send-command', methods=['POST'])
+@login_required
+@admin_required
+def send_drone_command():
+    """Send command to live drone"""
+    try:
+        data = request.get_json()
+        drone_id = data.get('drone_id')
+        command = data.get('command')
+        params = data.get('params', {})
+        
+        # Get drone from database
+        drone = Drone.query.get(drone_id)
+        if not drone:
+            return jsonify({
+                'success': False,
+                'error': 'Drone not found'
+            }), 404
+        
+        # Send command to live drone
+        success, message = drone_controller.send_command(drone.name, command, params)
+        
+        return jsonify({
+            'success': success,
+            'message': message,
+            'command': command,
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Command failed: {str(e)}'
+        }), 500
+
+@bp.route('/drones/telemetry/<int:drone_id>')
+@login_required
+@admin_required
+def get_drone_telemetry(drone_id):
+    """Get real-time telemetry from drone"""
+    try:
+        drone = Drone.query.get(drone_id)
+        if not drone:
+            return jsonify({
+                'success': False,
+                'error': 'Drone not found'
+            }), 404
+        
+        # Get live telemetry
+        telemetry = drone_controller.get_telemetry(drone.name)
+        
+        if telemetry:
+            # Update database with latest telemetry
+            if telemetry.get('position'):
+                pos = telemetry['position']
+                drone.location_lat = pos['lat']
+                drone.location_lon = pos['lon']
+            
+            if telemetry.get('battery'):
+                battery = telemetry['battery']
+                drone.battery_level = max(0, min(100, battery.get('remaining', 0)))
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'telemetry': telemetry
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No live telemetry available'
+            }), 404
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Telemetry error: {str(e)}'
         }), 500
 
 @bp.route('/missions')

@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}Live Drone Control - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-1">
+                        <i class="fas fa-satellite-dish text-success me-2"></i>
+                        Live Drone Control
+                    </h1>
+                    <p class="text-muted mb-0">Real-time control and monitoring of Pixhawk-based drones</p>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="refreshAllTelemetry()">
+                        <i class="fas fa-sync me-2"></i>Refresh Status
+                    </button>
+                    <a href="{{ url_for('admin.manage_drones') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Fleet
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Connection Status -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-wifi"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="liveConnectedCount">{{ drones|selectattr('live_connected')|list|length }}</h3>
+                    <p>Live Connected</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-helicopter"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ drones|length }}</h3>
+                    <p>Total Fleet</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="offlineCount">{{ drones|rejectattr('live_connected')|list|length }}</h3>
+                    <p>Offline</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Drone Grid -->
+    <div class="row" id="droneGrid">
+        {% for drone in drones %}
+        <div class="col-lg-6 mb-4" id="drone-{{ drone.id }}">
+            <div class="card h-100 {% if drone.live_connected %}border-success{% else %}border-warning{% endif %}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-helicopter me-2 text-{% if drone.live_connected %}success{% else %}warning{% endif %}"></i>
+                        <h6 class="mb-0">{{ drone.name }}</h6>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-{% if drone.live_connected %}success{% else %}warning{% endif %} me-2">
+                            {% if drone.live_connected %}LIVE{% else %}OFFLINE{% endif %}
+                        </span>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="refreshDroneTelemetry({{ drone.id }})">
+                                    <i class="fas fa-sync me-2"></i>Refresh
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="showFlightLogs({{ drone.id }})">
+                                    <i class="fas fa-file-alt me-2"></i>Flight Logs
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="emergencyLand({{ drone.id }})">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Emergency Land
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if drone.live_connected and drone.telemetry %}
+                    <!-- Live Telemetry Display -->
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">Flight Mode</small>
+                            <div class="fw-bold" id="mode-{{ drone.id }}">
+                                {{ drone.telemetry.status.mode if drone.telemetry.status else 'Unknown' }}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Armed Status</small>
+                            <div id="armed-{{ drone.id }}">
+                                <span class="badge bg-{% if drone.telemetry.status and drone.telemetry.status.armed %}danger{% else %}success{% endif %}">
+                                    {{ 'ARMED' if drone.telemetry.status and drone.telemetry.status.armed else 'DISARMED' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Battery and GPS -->
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">Battery</small>
+                            <div class="d-flex align-items-center">
+                                <div class="progress me-2" style="width: 60px; height: 8px;">
+                                    <div class="progress-bar bg-{% if drone.telemetry.battery and drone.telemetry.battery.remaining > 30 %}success{% elif drone.telemetry.battery and drone.telemetry.battery.remaining > 15 %}warning{% else %}danger{% endif %}" 
+                                         style="width: {{ drone.telemetry.battery.remaining if drone.telemetry.battery else 0 }}%"></div>
+                                </div>
+                                <small id="battery-{{ drone.id }}">
+                                    {{ drone.telemetry.battery.remaining if drone.telemetry.battery else 0 }}%
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">Altitude</small>
+                            <div class="fw-bold" id="altitude-{{ drone.id }}">
+                                {{ "%.1f"|format(drone.telemetry.position.relative_alt) if drone.telemetry.position else 0 }}m
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Position -->
+                    {% if drone.telemetry.position %}
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <small class="text-muted">Position</small>
+                            <div class="small" id="position-{{ drone.id }}">
+                                Lat: {{ "%.6f"|format(drone.telemetry.position.lat) }}<br>
+                                Lon: {{ "%.6f"|format(drone.telemetry.position.lon) }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Control Buttons -->
+                    <div class="btn-group w-100" role="group">
+                        <button class="btn btn-sm btn-outline-success" onclick="sendCommand({{ drone.id }}, 'arm')"
+                                {% if drone.telemetry.status and drone.telemetry.status.armed %}disabled{% endif %}>
+                            <i class="fas fa-power-off"></i> Arm
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="sendCommand({{ drone.id }}, 'disarm')"
+                                {% if not drone.telemetry.status or not drone.telemetry.status.armed %}disabled{% endif %}>
+                            <i class="fas fa-stop"></i> Disarm
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" onclick="showTakeoffModal({{ drone.id }})"
+                                {% if not drone.telemetry.status or not drone.telemetry.status.armed %}disabled{% endif %}>
+                            <i class="fas fa-plane-departure"></i> Takeoff
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="sendCommand({{ drone.id }}, 'land')"
+                                {% if not drone.telemetry.status or not drone.telemetry.status.armed %}disabled{% endif %}>
+                            <i class="fas fa-plane-arrival"></i> Land
+                        </button>
+                    </div>
+
+                    {% else %}
+                    <!-- Offline Display -->
+                    <div class="text-center py-3">
+                        <i class="fas fa-wifi-slash fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-2">Drone offline</p>
+                        <button class="btn btn-sm btn-outline-primary" onclick="attemptReconnect({{ drone.id }})">
+                            <i class="fas fa-wifi me-1"></i>Reconnect
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer text-muted">
+                    <small>Model: {{ drone.model }} | Last Update: <span id="lastUpdate-{{ drone.id }}">{{ drone.telemetry.timestamp if drone.telemetry else 'Never' }}</span></small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Takeoff Modal -->
+<div class="modal fade" id="takeoffModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plane-departure me-2"></i>Takeoff Command
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="takeoffAltitude" class="form-label">Target Altitude (meters)</label>
+                    <input type="number" class="form-control" id="takeoffAltitude" value="10" min="5" max="100">
+                    <div class="form-text">Safe altitude range: 5-100 meters</div>
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Ensure takeoff area is clear and weather conditions are suitable.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmTakeoff()">
+                    <i class="fas fa-plane-departure me-2"></i>Execute Takeoff
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedDroneId = null;
+let telemetryInterval = null;
+
+// Auto-refresh telemetry every 2 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    startTelemetryUpdates();
+});
+
+function startTelemetryUpdates() {
+    telemetryInterval = setInterval(refreshAllTelemetry, 2000);
+}
+
+function stopTelemetryUpdates() {
+    if (telemetryInterval) {
+        clearInterval(telemetryInterval);
+        telemetryInterval = null;
+    }
+}
+
+function refreshAllTelemetry() {
+    {% for drone in drones %}
+    if ({{ drone.live_connected|lower }}) {
+        refreshDroneTelemetry({{ drone.id }});
+    }
+    {% endfor %}
+}
+
+function refreshDroneTelemetry(droneId) {
+    fetch(`{{ url_for("admin.get_drone_telemetry", drone_id=0) }}`.replace('0', droneId))
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.telemetry) {
+            updateDroneDisplay(droneId, data.telemetry);
+        }
+    })
+    .catch(error => {
+        console.error('Telemetry error:', error);
+    });
+}
+
+function updateDroneDisplay(droneId, telemetry) {
+    // Update flight mode
+    const modeElement = document.getElementById(`mode-${droneId}`);
+    if (modeElement && telemetry.status) {
+        modeElement.textContent = telemetry.status.mode;
+    }
+    
+    // Update armed status
+    const armedElement = document.getElementById(`armed-${droneId}`);
+    if (armedElement && telemetry.status) {
+        const isArmed = telemetry.status.armed;
+        armedElement.innerHTML = `<span class="badge bg-${isArmed ? 'danger' : 'success'}">${isArmed ? 'ARMED' : 'DISARMED'}</span>`;
+    }
+    
+    // Update battery
+    const batteryElement = document.getElementById(`battery-${droneId}`);
+    if (batteryElement && telemetry.battery) {
+        batteryElement.textContent = `${telemetry.battery.remaining}%`;
+    }
+    
+    // Update altitude
+    const altitudeElement = document.getElementById(`altitude-${droneId}`);
+    if (altitudeElement && telemetry.position) {
+        altitudeElement.textContent = `${telemetry.position.relative_alt.toFixed(1)}m`;
+    }
+    
+    // Update position
+    const positionElement = document.getElementById(`position-${droneId}`);
+    if (positionElement && telemetry.position) {
+        positionElement.innerHTML = `Lat: ${telemetry.position.lat.toFixed(6)}<br>Lon: ${telemetry.position.lon.toFixed(6)}`;
+    }
+    
+    // Update timestamp
+    const timestampElement = document.getElementById(`lastUpdate-${droneId}`);
+    if (timestampElement) {
+        timestampElement.textContent = new Date(telemetry.timestamp).toLocaleTimeString();
+    }
+}
+
+function sendCommand(droneId, command, params = {}) {
+    const confirmMessages = {
+        'arm': 'Are you sure you want to ARM this drone?',
+        'disarm': 'Are you sure you want to DISARM this drone?',
+        'land': 'Are you sure you want to LAND this drone?',
+        'return_to_launch': 'Are you sure you want to initiate RETURN TO LAUNCH?'
+    };
+    
+    if (confirmMessages[command] && !confirm(confirmMessages[command])) {
+        return;
+    }
+    
+    fetch('{{ url_for("admin.send_drone_command") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            drone_id: droneId,
+            command: command,
+            params: params
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification(`Command ${command} sent successfully`, 'success');
+            }
+            // Refresh telemetry immediately
+            setTimeout(() => refreshDroneTelemetry(droneId), 500);
+        } else {
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification(`Command failed: ${data.error}`, 'error');
+            }
+        }
+    })
+    .catch(error => {
+        if (window.showSierraWingsNotification) {
+            showSierraWingsNotification('Network error sending command', 'error');
+        }
+    });
+}
+
+function showTakeoffModal(droneId) {
+    selectedDroneId = droneId;
+    const modal = new bootstrap.Modal(document.getElementById('takeoffModal'));
+    modal.show();
+}
+
+function confirmTakeoff() {
+    const altitude = parseFloat(document.getElementById('takeoffAltitude').value);
+    
+    if (altitude < 5 || altitude > 100) {
+        alert('Altitude must be between 5 and 100 meters');
+        return;
+    }
+    
+    sendCommand(selectedDroneId, 'takeoff', { altitude: altitude });
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('takeoffModal'));
+    modal.hide();
+}
+
+function emergencyLand(droneId) {
+    if (confirm('EMERGENCY LANDING - This will immediately land the drone. Continue?')) {
+        sendCommand(droneId, 'land');
+    }
+}
+
+function attemptReconnect(droneId) {
+    if (window.showSierraWingsNotification) {
+        showSierraWingsNotification('Attempting to reconnect...', 'info');
+    }
+    // Attempt to refresh telemetry
+    refreshDroneTelemetry(droneId);
+}
+
+function showFlightLogs(droneId) {
+    if (window.showSierraWingsNotification) {
+        showSierraWingsNotification('Flight logs feature coming soon', 'info');
+    }
+}
+
+// Stop updates when page is hidden
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        stopTelemetryUpdates();
+    } else {
+        startTelemetryUpdates();
+    }
+});
+</script>
+{% endblock %}
