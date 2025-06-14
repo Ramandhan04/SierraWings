@@ -22,7 +22,7 @@
                     <a href="{{ url_for('patient.find_clinics') }}" class="btn btn-outline-primary">
                         <i class="fas fa-hospital me-2"></i>Find Medical Facilities
                     </a>
-                    <button class="btn btn-danger emergency-panic-btn" onclick="triggerEmergencyRequest()">
+                    <button class="btn btn-danger emergency-panic-btn" id="emergencyBtn">
                         <i class="fas fa-exclamation-triangle me-2"></i>EMERGENCY
                     </button>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestDeliveryModal">
@@ -522,5 +522,13 @@ function updateTelemetry() {
 function viewMissionDetails(missionId) {
     window.location.href = `/patient/mission/${missionId}/details`;
 }
+
+// Initialize emergency button when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const emergencyBtn = document.getElementById('emergencyBtn');
+    if (emergencyBtn) {
+        emergencyBtn.addEventListener('click', triggerEmergencyRequest);
+    }
+});
 </script>
 {% endblock %}
