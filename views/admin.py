@@ -589,6 +589,135 @@ def live_drone_control():
     
     return render_template('live_drone_control.html', drones=live_drones)
 
+@bp.route('/drones/live-tracking')
+@login_required
+@admin_required
+def live_tracking():
+    """Interactive live drone location tracking with real-time map"""
+    return render_template('live_tracking.html')
+
+@bp.route('/drones/tracking/stream')
+@login_required
+@admin_required
+def tracking_stream():
+    """Real-time drone tracking data stream"""
+    try:
+        # Get all drones with live telemetry
+        drones = Drone.query.all()
+        tracking_data = []
+        
+        for drone in drones:
+            telemetry = drone_controller.get_telemetry(drone.name)
+            is_live = telemetry is not None
+            
+            # Get battery level from telemetry or database
+            if is_live and telemetry.get('battery'):
+                battery_level = telemetry['battery'].get('remaining', drone.battery_level)
+            else:
+                battery_level = drone.battery_level
+            
+            # Get GPS position from telemetry or database
+            if is_live and telemetry.get('position'):
+                pos = telemetry['position']
+                location = {
+                    'lat': pos['lat'],
+                    'lon': pos['lon'],
+                    'alt': pos.get('alt', 0),
+                    'gps_status': telemetry.get('gps', {}).get('fix_type', 'GPS_FIX_3D'),
+                    'satellites': telemetry.get('gps', {}).get('satellites_visible', 12),
+                    'accuracy': telemetry.get('gps', {}).get('eph', 0.5)
+                }
+            elif drone.location_lat and drone.location_lon:
+                location = {
+                    'lat': drone.location_lat,
+                    'lon': drone.location_lon,
+                    'alt': 0,
+                    'gps_status': 'No Live GPS',
+                    'satellites': 0,
+                    'accuracy': 99.99
+                }
+            else:
+                location = None
+            
+            tracking_info = {
+                'drone_id': drone.name,
+                'name': drone.name,
+                'model': drone.model,
+                'status': drone.status,
+                'battery_level': battery_level,
+                'location': location,
+                'live_connected': is_live,
+                'signal_strength': telemetry.get('signal_strength', 0) if is_live else 0,
+                'flight_mode': telemetry.get('flight_mode', 'Unknown') if is_live else 'Offline',
+                'armed': telemetry.get('armed', False) if is_live else False,
+                'last_seen': datetime.utcnow().isoformat(),
+                'telemetry_timestamp': telemetry.get('timestamp') if is_live else None
+            }
+            tracking_data.append(tracking_info)
+        
+        return jsonify({
+            'success': True,
+            'timestamp': datetime.utcnow().isoformat(),
+            'drone_count': len(tracking_data),
+            'online_count': sum(1 for d in tracking_data if d['live_connected']),
+            'flying_count': sum(1 for d in tracking_data if d['status'] == 'in_flight'),
+            'drones': tracking_data
+        })
+        
+    except Exception as e:
+        logging.error(f"Tracking stream error: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to get tracking data',
+            'details': str(e)
+        }), 500
+
+@bp.route('/drones/tracking/history/<drone_name>')
+@login_required
+@admin_required
+def drone_tracking_history(drone_name):
+    """Get tracking history for specific drone"""
+    try:
+        drone = Drone.query.filter_by(name=drone_name).first()
+        if not drone:
+            return jsonify({
+                'success': False,
+                'error': 'Drone not found'
+            }), 404
+        
+        # Get recent telemetry logs for the drone
+        recent_logs = TelemetryLog.query.filter_by(
+            mission_id=None  # General tracking logs
+        ).filter(
+            TelemetryLog.timestamp >= datetime.utcnow() - timedelta(hours=24)
+        ).order_by(TelemetryLog.timestamp.desc()).limit(100).all()
+        
+        history_data = []
+        for log in recent_logs:
+            history_data.append({
+                'timestamp': log.timestamp.isoformat(),
+                'latitude': log.latitude,
+                'longitude': log.longitude,
+                'altitude': log.altitude,
+                'battery_level': log.battery_level,
+                'signal_strength': log.signal_strength,
+                'flight_mode': log.flight_mode,
+                'speed': log.speed
+            })
+        
+        return jsonify({
+            'success': True,
+            'drone_name': drone_name,
+            'history': history_data,
+            'total_points': len(history_data)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to get tracking history: {str(e)}'
+        }), 500
+
 @bp.route('/drones/send-command', methods=['POST'])
 @login_required
 @admin_required
