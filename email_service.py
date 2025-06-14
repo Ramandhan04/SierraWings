@@ -152,3 +152,49 @@ def send_password_reset_email(user_email, user_name, reset_token):
     """
     
     return send_email(user_email, "noreply@sierrawings.com", subject, html_content=html_content)
+
+def send_emergency_notification_email(clinic_email, clinic_name, emergency_data):
+    """Send emergency notification to clinics"""
+    subject = "🚨 EMERGENCY DRONE REQUEST - SierraWings"
+    
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 3px solid #dc3545;">
+        <div style="background-color: #dc3545; color: white; padding: 15px; text-align: center;">
+            <h1 style="margin: 0;">🚨 EMERGENCY MEDICAL REQUEST</h1>
+        </div>
+        <div style="padding: 20px;">
+            <h2 style="color: #dc3545;">Immediate Action Required</h2>
+            <p><strong>Clinic:</strong> {clinic_name}</p>
+            <p><strong>Mission ID:</strong> #{emergency_data['mission_id']}</p>
+            
+            <div style="background-color: #f8f9fa; padding: 15px; border-left: 5px solid #dc3545; margin: 15px 0;">
+                <h3 style="color: #dc3545; margin-top: 0;">Emergency Details</h3>
+                <p><strong>Type:</strong> {emergency_data['emergency_type']}</p>
+                <p><strong>Patient:</strong> {emergency_data['patient_name']}</p>
+                <p><strong>Contact:</strong> {emergency_data.get('contact_phone', 'Not provided')}</p>
+                <p><strong>Delivery Address:</strong> {emergency_data['delivery_address']}</p>
+                <p><strong>Details:</strong> {emergency_data['details']}</p>
+            </div>
+            
+            <p style="background-color: #fff3cd; padding: 10px; border: 1px solid #ffeaa7;">
+                <strong>⚠️ This is a genuine emergency request requiring immediate response.</strong>
+            </p>
+            
+            <p style="margin: 20px 0;">
+                <a href="https://your-domain.com/clinic/missions" 
+                   style="background-color: #dc3545; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                    🚁 RESPOND TO EMERGENCY
+                </a>
+            </p>
+            
+            <hr>
+            <p style="color: #666; font-size: 12px;">
+                SierraWings Emergency Response System<br>
+                For technical support, call 117<br>
+                Sierra Leone
+            </p>
+        </div>
+    </div>
+    """
+    
+    return send_email(clinic_email, "emergency@sierrawings.sl", subject, html_content=html_content)
