@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Mission Details - SierraWings{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="h3 fw-bold text-primary mb-1">
+                        <i class="fas fa-clipboard-list me-2"></i>Mission #{{ mission.id }}
+                    </h2>
+                    <p class="text-muted mb-0">Detailed mission information and tracking</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('patient.dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                    {% if mission.status == 'in_flight' %}
+                        <button class="btn btn-primary" onclick="openLiveTracking()">
+                            <i class="fas fa-map-marker-alt me-2"></i>Live Tracking
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Mission Information Card -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Mission Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Mission ID:</strong></td>
+                                    <td>#{{ mission.id }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        <span class="badge bg-{{ 
+                                            'secondary' if mission.status == 'pending' else
+                                            'info' if mission.status == 'accepted' else
+                                            'primary' if mission.status == 'in_flight' else
+                                            'success' if mission.status == 'completed' else
+                                            'danger' if mission.status in ['cancelled', 'rejected'] else
+                                            'secondary'
+                                        }}">
+                                            {{ mission.status|replace('_', ' ')|title }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Priority:</strong></td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if mission.priority == 'emergency' else 'warning' if mission.priority == 'high' else 'primary' }}">
+                                            {{ mission.priority|title }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Payload Type:</strong></td>
+                                    <td>{{ mission.payload_type }}</td>
+                                </tr>
+                                {% if mission.payload_weight %}
+                                <tr>
+                                    <td><strong>Weight:</strong></td>
+                                    <td>{{ mission.payload_weight }} kg</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Created:</strong></td>
+                                    <td>{{ mission.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                </tr>
+                                {% if mission.accepted_at %}
+                                <tr>
+                                    <td><strong>Accepted:</strong></td>
+                                    <td>{{ mission.accepted_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if mission.started_at %}
+                                <tr>
+                                    <td><strong>Started:</strong></td>
+                                    <td>{{ mission.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if mission.completed_at %}
+                                <tr>
+                                    <td><strong>Completed:</strong></td>
+                                    <td>{{ mission.completed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if mission.estimated_duration %}
+                                <tr>
+                                    <td><strong>Est. Duration:</strong></td>
+                                    <td>{{ mission.estimated_duration }} minutes</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Addresses Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-map-marker-alt me-2"></i>Pickup & Delivery Addresses
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary"><i class="fas fa-arrow-up me-2"></i>Pickup Address</h6>
+                            <p class="mb-0">{{ mission.pickup_address }}</p>
+                            {% if mission.pickup_lat and mission.pickup_lon %}
+                                <small class="text-muted">
+                                    <i class="fas fa-map-pin me-1"></i>
+                                    {{ mission.pickup_lat }}, {{ mission.pickup_lon }}
+                                </small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success"><i class="fas fa-arrow-down me-2"></i>Delivery Address</h6>
+                            <p class="mb-0">{{ mission.delivery_address }}</p>
+                            {% if mission.delivery_lat and mission.delivery_lon %}
+                                <small class="text-muted">
+                                    <i class="fas fa-map-pin me-1"></i>
+                                    {{ mission.delivery_lat }}, {{ mission.delivery_lon }}
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions & Notes -->
+            {% if mission.special_instructions or mission.notes %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-sticky-note me-2"></i>Instructions & Notes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if mission.special_instructions %}
+                        <h6>Special Instructions:</h6>
+                        <p class="mb-3">{{ mission.special_instructions }}</p>
+                    {% endif %}
+                    {% if mission.notes %}
+                        <h6>Notes:</h6>
+                        <p class="mb-0">{{ mission.notes }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Telemetry Data (if in flight) -->
+            {% if mission.status == 'in_flight' and telemetry %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-satellite me-2"></i>Live Telemetry Data
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Position</th>
+                                    <th>Altitude</th>
+                                    <th>Speed</th>
+                                    <th>Battery</th>
+                                    <th>Signal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tel in telemetry[:10] %}
+                                <tr>
+                                    <td>{{ tel.timestamp.strftime('%H:%M:%S') }}</td>
+                                    <td>{{ "%.4f"|format(tel.latitude) }}, {{ "%.4f"|format(tel.longitude) }}</td>
+                                    <td>{{ tel.altitude|round(1) }}m</td>
+                                    <td>{{ tel.speed|round(1) if tel.speed else '--' }} m/s</td>
+                                    <td>
+                                        <span class="badge bg-{{ 'danger' if tel.battery_level < 20 else 'warning' if tel.battery_level < 50 else 'success' }}">
+                                            {{ tel.battery_level }}%
+                                        </span>
+                                    </td>
+                                    <td>{{ tel.signal_strength or '--' }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Status & Actions Sidebar -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cogs me-2"></i>Mission Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if mission.status == 'pending' %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-clock me-2"></i>
+                            <strong>Pending:</strong> Waiting for clinic acceptance
+                        </div>
+                        <form method="POST" action="{{ url_for('patient.cancel_mission', mission_id=mission.id) }}" onsubmit="return confirm('Are you sure you want to cancel this mission?')">
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-times me-2"></i>Cancel Mission
+                            </button>
+                        </form>
+                    {% elif mission.status == 'accepted' %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check me-2"></i>
+                            <strong>Accepted:</strong> Preparing for takeoff
+                        </div>
+                        <form method="POST" action="{{ url_for('patient.cancel_mission', mission_id=mission.id) }}" onsubmit="return confirm('Are you sure you want to cancel this mission?')">
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-times me-2"></i>Cancel Mission
+                            </button>
+                        </form>
+                    {% elif mission.status == 'in_flight' %}
+                        <div class="alert alert-primary">
+                            <i class="fas fa-plane me-2"></i>
+                            <strong>In Flight:</strong> Drone is en route
+                        </div>
+                        <button class="btn btn-primary w-100 mb-2" onclick="openLiveTracking()">
+                            <i class="fas fa-map-marker-alt me-2"></i>Live Tracking
+                        </button>
+                        <button class="btn btn-outline-info w-100" onclick="refreshTelemetry()">
+                            <i class="fas fa-sync me-2"></i>Refresh Data
+                        </button>
+                    {% elif mission.status == 'completed' %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Completed:</strong> Delivery successful
+                        </div>
+                        <button class="btn btn-outline-primary w-100" onclick="downloadReport()">
+                            <i class="fas fa-download me-2"></i>Download Report
+                        </button>
+                    {% elif mission.status == 'cancelled' %}
+                        <div class="alert alert-secondary">
+                            <i class="fas fa-ban me-2"></i>
+                            <strong>Cancelled:</strong> Mission was cancelled
+                        </div>
+                    {% elif mission.status == 'rejected' %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-times-circle me-2"></i>
+                            <strong>Rejected:</strong> Unable to fulfill request
+                        </div>
+                    {% endif %}
+
+                    {% if mission.payment_status %}
+                    <div class="mt-3">
+                        <h6>Payment Status</h6>
+                        <span class="badge bg-{{ 'success' if mission.payment_status == 'completed' else 'warning' if mission.payment_status == 'processing' else 'danger' }}">
+                            {{ mission.payment_status|title }}
+                        </span>
+                        {% if mission.payment_method %}
+                            <br><small class="text-muted">via {{ mission.payment_method|title }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Emergency Contact Card -->
+            <div class="card mt-3">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-phone me-2"></i>Emergency Contact
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2"><strong>Sierra Leone Emergency:</strong></p>
+                    <p class="mb-0">
+                        <a href="tel:117" class="btn btn-outline-danger btn-sm">
+                            <i class="fas fa-phone me-2"></i>Call 117
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openLiveTracking() {
+    window.open('/live-tracking?mission={{ mission.id }}', '_blank', 'width=1200,height=800');
+}
+
+function refreshTelemetry() {
+    location.reload();
+}
+
+function downloadReport() {
+    window.open('/patient/mission/{{ mission.id }}/report', '_blank');
+}
+</script>
+{% endblock %}

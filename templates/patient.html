@@ -375,18 +375,20 @@ function submitEmergencyRequest() {
     formData.append('pickup_address', 'Emergency Medical Center');
     formData.append('special_instructions', 'EMERGENCY DELIVERY - PRIORITY 1');
     
-    fetch('/patient/request_delivery', {
+    fetch('/patient/emergency-request', {
         method: 'POST',
         body: formData
-    }).then(response => {
-        if (response.ok) {
-            closeEmergencyModal();
+    }).then(response => response.json())
+    .then(data => {
+        closeEmergencyModal();
+        if (data.success) {
             showSierraWingsNotification('Emergency drone dispatch initiated! ETA: 8-12 minutes', 'success');
             setTimeout(() => location.reload(), 2000);
         } else {
             showSierraWingsNotification('Emergency request failed. Please call 117 immediately.', 'danger');
         }
     }).catch(error => {
+        closeEmergencyModal();
         showSierraWingsNotification('Emergency request failed. Please call 117 immediately.', 'danger');
     });
 }

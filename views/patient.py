@@ -185,3 +185,67 @@ def clinic_details(clinic_id):
                          clinic=clinic,
                          total_missions=total_missions,
                          completed_missions=completed_missions)
+
+@bp.route('/emergency-request', methods=['POST'])
+@login_required
+@patient_required
+def emergency_request():
+    """Handle emergency delivery requests"""
+    try:
+        # Get emergency form data
+        emergency_type = request.form.get('emergency_type')
+        emergency_details = request.form.get('emergency_details')
+        delivery_address = request.form.get('delivery_address')
+        
+        # Validation
+        if not all([emergency_type, emergency_details, delivery_address]):
+            return jsonify({'success': False, 'error': 'All fields are required'}), 400
+        
+        # Create emergency mission
+        mission = Mission()
+        mission.user_id = current_user.id
+        mission.payload_type = f"{emergency_type.replace('_', ' ').title() if emergency_type else 'Emergency'} - EMERGENCY"
+        mission.payload_weight = 2.0  # Default emergency weight
+        mission.pickup_address = "Emergency Medical Center - Freetown"
+        mission.delivery_address = delivery_address
+        mission.priority = 'emergency'
+        mission.special_instructions = f"EMERGENCY DELIVERY - PRIORITY 1\n\nDetails: {emergency_details}"
+        mission.status = 'pending'
+        mission.notes = f"Emergency Request - Type: {emergency_type}, Patient: {current_user.full_name}"
+        
+        db.session.add(mission)
+        db.session.commit()
+        
+        # Send emergency notifications to all verified clinics
+        verified_clinics = ClinicProfile.query.filter_by(is_verified=True, is_active=True).all()
+        
+        try:
+            from email_service import send_emergency_notification_email
+            for clinic in verified_clinics:
+                try:
+                    send_emergency_notification_email(
+                        clinic.user.email,
+                        clinic.clinic_name,
+                        {
+                            'mission_id': mission.id,
+                            'emergency_type': emergency_type,
+                            'patient_name': current_user.full_name,
+                            'details': emergency_details,
+                            'delivery_address': delivery_address,
+                            'contact_phone': current_user.phone or 'Not provided'
+                        }
+                    )
+                except Exception as e:
+                    print(f"Failed to send emergency notification to {clinic.clinic_name}: {e}")
+        except ImportError:
+            print("Email service not available for emergency notifications")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Emergency drone dispatch initiated! All clinics have been notified.',
+            'mission_id': mission.id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
