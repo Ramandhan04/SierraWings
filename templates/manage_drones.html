@@ -1644,7 +1644,7 @@ let selectedDrone = null;
 let selectedDroneData = null;
 let liveGpsInterval = null;
 
-// Check wireless network status - moved to global scope
+// Check wireless network status - fully functional
 window.checkWirelessStatus = function() {
     const modal = new bootstrap.Modal(document.getElementById('networkStatusModal'));
     const content = document.getElementById('networkStatusContent');
@@ -1654,7 +1654,7 @@ window.checkWirelessStatus = function() {
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Checking network status...</span>
             </div>
-            <p class="mt-2">Scanning wireless network...</p>
+            <p class="mt-2">Checking live network status...</p>
         </div>
     `;
     
@@ -1669,32 +1669,42 @@ window.checkWirelessStatus = function() {
             statusHtml += `
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle me-2"></i>
-                    Wireless network operational - Discovery service running on port 8888
+                    ${data.message || 'Wireless network operational'}
+                    <br><small>Discovery service running on port 8888</small>
                 </div>
-                <h6>Discovered Live Drones (${data.wireless_status.length})</h6>
             `;
             
             if (data.wireless_status.length > 0) {
+                statusHtml += `<h6>Live Drones (${data.wireless_status.length})</h6>`;
+                
                 data.wireless_status.forEach(drone => {
                     const isConnected = drone.live_connected;
                     const hasGPS = drone.location && drone.location.lat && drone.location.lon;
+                    const pixhawkStatus = drone.pixhawk_connected;
+                    const raspberryPiStatus = drone.raspberry_pi_connected;
                     
                     statusHtml += `
                         <div class="card mb-2">
                             <div class="card-body p-2">
-                                <div class="d-flex justify-content-between">
+                                <div class="d-flex justify-content-between align-items-start">
                                     <div>
                                         <strong>${drone.name}</strong>
-                                        <span class="badge ${isConnected ? 'bg-success' : 'bg-warning'} ms-2">
-                                            ${isConnected ? 'Live Connected' : 'Discovered'}
-                                        </span>
-                                        ${hasGPS ? '<span class="badge bg-info ms-1">GPS</span>' : ''}
+                                        <div class="mt-1">
+                                            <span class="badge ${isConnected ? 'bg-success' : 'bg-warning'} me-1">
+                                                ${isConnected ? 'Live Connected' : 'Discovered'}
+                                            </span>
+                                            ${pixhawkStatus ? '<span class="badge bg-info me-1">Pixhawk</span>' : ''}
+                                            ${raspberryPiStatus ? '<span class="badge bg-info me-1">RPi</span>' : ''}
+                                            ${hasGPS ? '<span class="badge bg-success me-1">GPS</span>' : ''}
+                                        </div>
                                     </div>
-                                    <small class="text-muted">
-                                        Battery: ${drone.battery_level}% | 
-                                        Signal: ${drone.signal_strength}%
-                                        ${hasGPS ? ` | GPS: ${drone.location.lat.toFixed(4)}, ${drone.location.lon.toFixed(4)}` : ''}
-                                    </small>
+                                    <div class="text-end">
+                                        <small class="text-muted">
+                                            Battery: ${drone.battery_level}%<br>
+                                            Signal: ${drone.signal_strength}%
+                                            ${hasGPS ? `<br>GPS: ${drone.location.lat.toFixed(4)}, ${drone.location.lon.toFixed(4)}` : ''}
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1704,22 +1714,44 @@ window.checkWirelessStatus = function() {
                 statusHtml += `
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        No live drones found on network. Make sure:
+                        No live drones found on network.
+                        <br><br><strong>Setup checklist:</strong>
                         <ul class="mt-2 mb-0">
-                            <li>Pixhawk flight controllers are powered on</li>
-                            <li>Raspberry Pi clients are running drone service</li>
-                            <li>Devices are on the same wireless network</li>
+                            <li>Power on Pixhawk flight controllers</li>
+                            <li>Start Raspberry Pi drone service</li>
+                            <li>Ensure devices are on same wireless network</li>
+                            <li>Verify MAVLink communication is enabled</li>
                         </ul>
                     </div>
                 `;
             }
         } else {
-            statusHtml += `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Network check failed: ${data.error || 'Unknown error'}
-                </div>
-            `;
+            // Handle access restriction or errors
+            if (data.requires_connection) {
+                statusHtml += `
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Connect to drone before access</strong>
+                        <br><br>${data.message || 'No drones connected.'}
+                        <br><br>
+                        <button class="btn btn-primary mt-2" onclick="bootstrap.Modal.getInstance(document.getElementById('networkStatusModal')).hide(); document.querySelector('[data-bs-target=\\'#createDroneModal\\']').click();">
+                            <i class="fas fa-plus me-2"></i>Add & Connect Drone
+                        </button>
+                    </div>
+                `;
+            } else {
+                statusHtml += `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Network Check Failed</strong>
+                        <br>${data.error || 'Unknown error'}
+                        <br><br>
+                        <button class="btn btn-outline-primary mt-2" onclick="checkWirelessStatus();">
+                            <i class="fas fa-sync me-2"></i>Retry
+                        </button>
+                    </div>
+                `;
+            }
         }
         
         content.innerHTML = statusHtml;
@@ -1728,7 +1760,12 @@ window.checkWirelessStatus = function() {
         content.innerHTML = `
             <div class="alert alert-danger">
                 <i class="fas fa-exclamation-triangle me-2"></i>
-                Error checking network: ${error.message}
+                <strong>Connection Error</strong>
+                <br>Failed to check network status: ${error.message}
+                <br><br>
+                <button class="btn btn-outline-primary mt-2" onclick="checkWirelessStatus();">
+                    <i class="fas fa-sync me-2"></i>Retry
+                </button>
             </div>
         `;
     });

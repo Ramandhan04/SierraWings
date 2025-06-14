@@ -476,7 +476,7 @@ function toggleAutoRefresh() {
     }
 }
 
-function refreshTracking() {
+window.refreshTracking = function() {
     const icon = document.getElementById('refreshIcon');
     icon.classList.add('refresh-indicator');
     
