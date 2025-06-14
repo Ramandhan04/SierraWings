@@ -92,12 +92,12 @@ def register():
             if not invite_code:
                 errors.append('Access denied: Medical facility registration requires an invitation code. Please contact your facility administrator.')
             elif invite_code != INVITE_CODES.get('clinic'):
-                errors.append('Invalid invitation code for medical facility registration. Please verify the code with your administrator.')
+                errors.append('Invalid invite code')
         elif role == 'admin':
             if not invite_code:
                 errors.append('Access denied: Administrator registration requires an invitation code. Please contact the system administrator.')
             elif invite_code != INVITE_CODES.get('admin'):
-                errors.append('Invalid invitation code for administrator registration. Please verify the code with the system administrator.')
+                errors.append('Invalid invite code')
         
         # Check if email already exists
         if User.query.filter_by(email=email).first():
