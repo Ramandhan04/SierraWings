@@ -475,7 +475,86 @@ function getStatusColor(status) {
 let currentConnectionId = null;
 let selectedDroneInfo = null;
 
-// Remove all window-based function definitions and use only global functions defined below
+// Core drone management functions
+function scanForDrones() {
+    const scanIcon = document.getElementById('scanIcon');
+    const scanPhase = document.getElementById('scanPhase');
+    const discoveredPhase = document.getElementById('discoveredDronesPhase');
+    
+    document.getElementById('discoveredDronesList').innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Scanning for live Pixhawk drones...</p></div>';
+    
+    scanIcon.classList.add('fa-spin');
+    scanPhase.style.display = 'none';
+    discoveredPhase.style.display = 'block';
+    
+    fetch('{{ url_for("admin.scan_wireless_drones") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        scanIcon.classList.remove('fa-spin');
+        if (data.success) {
+            displayDiscoveredDrones(data.drones);
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification(`Found ${data.drones.length} live drone(s)`, 'success');
+            }
+        } else {
+            document.getElementById('discoveredDronesList').innerHTML = '<div class="alert alert-danger">Error scanning for drones</div>';
+        }
+    })
+    .catch(error => {
+        scanIcon.classList.remove('fa-spin');
+        document.getElementById('discoveredDronesList').innerHTML = '<div class="alert alert-danger">Network error during scan</div>';
+    });
+}
+
+function checkWirelessStatus() {
+    const modal = new bootstrap.Modal(document.getElementById('networkStatusModal'));
+    modal.show();
+    
+    const contentDiv = document.getElementById('networkStatusContent');
+    contentDiv.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Checking live network status...</p></div>';
+    
+    fetch('{{ url_for("admin.wireless_status") }}')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayNetworkStatus(data);
+        } else {
+            contentDiv.innerHTML = '<div class="alert alert-danger">Failed to get network status</div>';
+        }
+    })
+    .catch(error => {
+        contentDiv.innerHTML = '<div class="alert alert-danger">Network error while checking live status</div>';
+    });
+}
+
+function testDroneConnection(droneId) {
+    fetch(`{{ url_for("admin.test_drone_connection", drone_id=0) }}`.replace('0', droneId), {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        displayConnectionTestResults(data);
+        if (data.success) {
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification('Connection test completed', 'success');
+            }
+        } else {
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification('Connection test failed: ' + data.error, 'error');
+            }
+        }
+    })
+    .catch(error => {
+        if (window.showSierraWingsNotification) {
+            showSierraWingsNotification('Network error during test', 'error');
+        }
+    });
+}
+
+function displayDiscoveredDrones(drones) {
     const dronesList = document.getElementById('discoveredDronesList');
     dronesList.innerHTML = '';
     
@@ -533,6 +612,160 @@ let selectedDroneInfo = null;
         `;
         dronesList.appendChild(droneItem);
     });
+}
+
+function displayNetworkStatus(data) {
+    const content = document.getElementById('networkStatusContent');
+    
+    let statusHtml = `
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card border-primary">
+                    <div class="card-body text-center">
+                        <h3 class="text-primary mb-0">${data.total_drones}</h3>
+                        <small class="text-muted">Total Drones</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <h3 class="text-success mb-0">${data.online_drones}</h3>
+                        <small class="text-muted">Live Connected</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-warning">
+                    <div class="card-body text-center">
+                        <h3 class="text-warning mb-0">${data.total_drones - data.online_drones}</h3>
+                        <small class="text-muted">Offline</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Drone</th>
+                        <th>Status</th>
+                        <th>Battery</th>
+                        <th>Signal</th>
+                        <th>Data Rate</th>
+                        <th>Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    data.drones.forEach(drone => {
+        const statusColor = drone.live_connected ? 'success' : 'danger';
+        const statusIcon = drone.live_connected ? 'check-circle' : 'times-circle';
+        const statusText = drone.live_connected ? 'Live' : 'Offline';
+        
+        statusHtml += `
+            <tr>
+                <td>
+                    <strong>${drone.name}</strong><br>
+                    <small class="text-muted">${drone.model}</small>
+                </td>
+                <td>
+                    <span class="badge bg-${statusColor}">
+                        <i class="fas fa-${statusIcon} me-1"></i>${statusText}
+                    </span>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                            <div class="progress-bar bg-${drone.battery_level > 30 ? 'success' : drone.battery_level > 15 ? 'warning' : 'danger'}" 
+                                 style="width: ${drone.battery_level}%"></div>
+                        </div>
+                        <small>${drone.battery_level}%</small>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                            <div class="progress-bar" style="width: ${drone.signal_strength}%"></div>
+                        </div>
+                        <small>${drone.signal_strength}%</small>
+                    </div>
+                </td>
+                <td>
+                    <small class="text-${drone.live_connected ? 'success' : 'muted'}">${drone.data_rate}</small>
+                </td>
+                <td><small>${new Date(drone.last_seen).toLocaleString()}</small></td>
+            </tr>
+        `;
+    });
+    
+    statusHtml += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    content.innerHTML = statusHtml + `
+        <div class="alert alert-info mt-3">
+            <i class="fas fa-satellite-dish me-2"></i>
+            <strong>Live Network Status:</strong> Real-time MAVLink connections to Pixhawk flight controllers via Raspberry Pi systems. 
+            Signal strength and data rates reflect actual wireless communication quality with deployed aircraft.
+        </div>
+    `;
+}
+
+function displayConnectionTestResults(data) {
+    const modal = new bootstrap.Modal(document.getElementById('connectionTestModal'));
+    const content = document.getElementById('testResultsContent');
+    
+    let resultsHtml = `
+        <div class="alert alert-${data.success ? 'success' : 'danger'}">
+            <i class="fas fa-${data.success ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+            <strong>${data.success ? 'Connection Test Passed' : 'Connection Test Failed'}</strong>
+        </div>
+    `;
+    
+    if (data.test_results) {
+        resultsHtml += `
+            <h6>Test Results:</h6>
+            <ul class="list-group mb-3">
+        `;
+        
+        data.test_results.forEach(result => {
+            const icon = result.success ? 'check text-success' : 'times text-danger';
+            resultsHtml += `
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    ${result.test}
+                    <i class="fas fa-${icon}"></i>
+                </li>
+            `;
+        });
+        
+        resultsHtml += '</ul>';
+    }
+    
+    if (data.telemetry) {
+        resultsHtml += `
+            <h6>Live Telemetry:</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <small><strong>Battery:</strong> ${data.telemetry.battery || 'N/A'}%</small><br>
+                    <small><strong>GPS:</strong> ${data.telemetry.gps_status || 'No Fix'}</small><br>
+                    <small><strong>Armed:</strong> ${data.telemetry.armed ? 'Yes' : 'No'}</small>
+                </div>
+                <div class="col-md-6">
+                    <small><strong>Flight Mode:</strong> ${data.telemetry.flight_mode || 'Unknown'}</small><br>
+                    <small><strong>Altitude:</strong> ${data.telemetry.altitude || 'N/A'} m</small><br>
+                    <small><strong>Signal:</strong> ${data.telemetry.signal_strength || 'N/A'}%</small>
+                </div>
+            </div>
+        `;
+    }
+    
+    content.innerHTML = resultsHtml;
+    modal.show();
 }
 
 window.connectToDrone = function(droneId, droneName, droneModel, ipAddress) {
