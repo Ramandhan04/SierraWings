@@ -376,12 +376,15 @@ body {
 }
 
 /* Emergency Button Specific */
-.emergency-panic-btn {
+.emergency-panic-btn, .emergency-card-btn {
     position: relative;
     overflow: hidden;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.emergency-panic-btn::before {
+.emergency-panic-btn::before, .emergency-card-btn::before {
     content: '';
     position: absolute;
     top: 0;
@@ -392,8 +395,18 @@ body {
     transition: left 0.5s;
 }
 
-.emergency-panic-btn:hover::before {
+.emergency-panic-btn:hover::before, .emergency-card-btn:hover::before {
     left: 100%;
+}
+
+.emergency-card-btn {
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    border: none;
+}
+
+.emergency-card-btn:hover {
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+    transform: translateY(-2px);
 }
 
 /* Telemetry Widgets */
