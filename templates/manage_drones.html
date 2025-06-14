@@ -1552,20 +1552,32 @@ function addWirelessDrone() {
     
     fetch('/admin/create-drone', {
         method: 'POST',
-        body: formData
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(formData)
     })
-    .then(response => {
-        if (response.ok) {
-            // Clear interval
-            if (liveGpsInterval) {
-                clearInterval(liveGpsInterval);
+    .then(response => response.json())
+    .then(data => {
+        // Clear interval
+        if (liveGpsInterval) {
+            clearInterval(liveGpsInterval);
+        }
+        
+        if (data.success) {
+            // Show success message
+            if (window.showSierraWingsNotification) {
+                const message = data.connected ? 
+                    `Drone "${droneName}" added with live Pixhawk connection!` :
+                    `Drone "${droneName}" created successfully!`;
+                showSierraWingsNotification(message, 'success');
             }
             
             // Close modal and refresh page
             bootstrap.Modal.getInstance(document.getElementById('addDroneModal')).hide();
-            location.reload();
+            setTimeout(() => location.reload(), 1000);
         } else {
-            alert('Failed to add drone');
+            alert('Failed to add drone: ' + data.error);
         }
     })
     .catch(error => {
@@ -1603,9 +1615,86 @@ document.getElementById('addDroneModal').addEventListener('hidden.bs.modal', fun
     selectedDrone = null;
 });
 
-// Define all functions in global scope without window prefix
-function scanForDrones() {
-    const scanIcon = document.getElementById('scanIcon');
+// Global variables for live drone functionality
+let selectedDrone = null;
+let selectedDroneData = null;
+let liveGpsInterval = null;
+
+// Check wireless network status
+function checkWirelessStatus() {
+    const modal = new bootstrap.Modal(document.getElementById('networkStatusModal'));
+    const content = document.getElementById('networkStatusContent');
+    
+    content.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Checking network status...</span>
+            </div>
+            <p class="mt-2">Scanning wireless network...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    fetch('/admin/drones/wireless-status')
+    .then(response => response.json())
+    .then(data => {
+        let statusHtml = '<h6>Network Status</h6>';
+        
+        if (data.success) {
+            statusHtml += `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Wireless network operational
+                </div>
+                <h6>Discovered Drones (${data.wireless_status.length})</h6>
+            `;
+            
+            if (data.wireless_status.length > 0) {
+                data.wireless_status.forEach(drone => {
+                    const isConnected = drone.live_connected;
+                    statusHtml += `
+                        <div class="card mb-2">
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <strong>${drone.name}</strong>
+                                        <span class="badge ${isConnected ? 'bg-success' : 'bg-warning'} ms-2">
+                                            ${isConnected ? 'Connected' : 'Discovered'}
+                                        </span>
+                                    </div>
+                                    <small class="text-muted">
+                                        Battery: ${drone.battery_level}% | 
+                                        Signal: ${drone.signal_strength}%
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                statusHtml += '<p class="text-muted">No drones found on network</p>';
+            }
+        } else {
+            statusHtml += `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Network check failed: ${data.error}
+                </div>
+            `;
+        }
+        
+        content.innerHTML = statusHtml;
+    })
+    .catch(error => {
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error checking network: ${error.message}
+            </div>
+        `;
+    });
+}
     const scanPhase = document.getElementById('scanPhase');
     const discoveredPhase = document.getElementById('discoveredDronesPhase');
     
