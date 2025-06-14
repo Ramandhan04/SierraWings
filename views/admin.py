@@ -145,15 +145,14 @@ def create_user():
             return redirect(url_for('admin.manage_users'))
         
         # Create user
-        user = User(
-            email=email,
-            password_hash=generate_password_hash(password),
-            role=role,
-            first_name=first_name,
-            last_name=last_name,
-            phone=phone or None,
-            address=address or None
-        )
+        user = User()
+        user.email = email
+        user.password_hash = generate_password_hash(password)
+        user.role = role
+        user.first_name = first_name
+        user.last_name = last_name
+        user.phone = phone or None
+        user.address = address or None
         
         db.session.add(user)
         db.session.commit()
@@ -270,14 +269,13 @@ def create_drone():
         live_lat = request.form.get('live_lat')
         live_lon = request.form.get('live_lon')
         
-        drone = Drone(
-            name=name,
-            model=model,
-            status='available',
-            battery_level=100,
-            location_lat=float(live_lat) if live_lat else None,
-            location_lon=float(live_lon) if live_lon else None
-        )
+        drone = Drone()
+        drone.name = name
+        drone.model = model
+        drone.status = 'available'
+        drone.battery_level = 100
+        drone.location_lat = float(live_lat) if live_lat else None
+        drone.location_lon = float(live_lon) if live_lon else None
         
         db.session.add(drone)
         db.session.commit()
@@ -444,16 +442,15 @@ def register_wireless_drone():
             }), 400
         
         # Create new drone record
-        new_drone = Drone(
-            name=drone_name,
-            model=drone_model,
-            status='available',
-            battery_level=random.randint(80, 100),
-            location_lat=8.4606,  # Freetown coordinates
-            location_lon=-13.2317,
-            created_at=datetime.utcnow(),
-            last_maintenance=datetime.utcnow()
-        )
+        new_drone = Drone()
+        new_drone.name = drone_name
+        new_drone.model = drone_model
+        new_drone.status = 'available'
+        new_drone.battery_level = random.randint(80, 100)
+        new_drone.location_lat = 8.4606  # Freetown coordinates
+        new_drone.location_lon = -13.2317
+        new_drone.created_at = datetime.utcnow()
+        new_drone.last_maintenance = datetime.utcnow()
         
         db.session.add(new_drone)
         db.session.commit()

@@ -110,15 +110,14 @@ def register():
         
         # Create new user
         try:
-            user = User(
-                email=email,
-                password_hash=generate_password_hash(password),
-                role=role,
-                first_name=first_name,
-                last_name=last_name,
-                phone=phone or None,
-                address=address or None
-            )
+            user = User()
+            user.email = email
+            user.password_hash = generate_password_hash(password)
+            user.role = role
+            user.first_name = first_name
+            user.last_name = last_name
+            user.phone = phone or None
+            user.address = address or None
             db.session.add(user)
             db.session.commit()
             
@@ -271,7 +270,7 @@ def disable_2fa():
     token = request.form.get('token')
     password = request.form.get('password')
     
-    if not check_password_hash(current_user.password_hash, password):
+    if not current_user.password_hash or not check_password_hash(current_user.password_hash, password):
         flash('Incorrect password.', 'error')
         return redirect(url_for('auth.two_factor_setup'))
     
@@ -279,12 +278,12 @@ def disable_2fa():
     is_valid = False
     if current_user.two_factor_secret:
         totp = pyotp.TOTP(current_user.two_factor_secret)
-        if totp.verify(token):
+        if token and totp.verify(token):
             is_valid = True
         else:
             # Check backup codes
             backup_codes = json.loads(current_user.backup_codes or '[]')
-            if token.upper() in backup_codes:
+            if token and token.upper() in backup_codes:
                 backup_codes.remove(token.upper())
                 current_user.backup_codes = json.dumps(backup_codes)
                 is_valid = True
