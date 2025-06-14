@@ -440,7 +440,7 @@ function centerOnSierraLeone() {
     liveMap.setView([8.4606, -11.7799], 8);
 }
 
-function centerOnActiveDrones() {
+window.centerOnActiveDrones = function() {
     const activeMarkers = Object.values(droneMarkers);
     if (activeMarkers.length > 0) {
         const group = new L.featureGroup(activeMarkers);
@@ -448,7 +448,7 @@ function centerOnActiveDrones() {
     }
 }
 
-function toggleTrails() {
+window.toggleTrails = function() {
     showTrails = !showTrails;
     
     if (!showTrails) {

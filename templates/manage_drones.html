@@ -263,9 +263,18 @@
                                     </div>
                                 </div>
                                 
-                                <button type="button" class="btn btn-primary" onclick="connectWirelessly()">
+                                <button type="button" class="btn btn-primary" id="connectWirelessBtn" onclick="connectWirelessly()">
                                     <i class="fas fa-satellite-dish me-2"></i>Connect Wirelessly
                                 </button>
+                                
+                                <div id="connectionSuccess" class="d-none mt-3">
+                                    <div class="alert alert-success">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        <strong>Wireless Connection Established!</strong>
+                                        <br>Successfully connected to Pixhawk flight controller and Raspberry Pi.
+                                        <br>You can now add this drone to your fleet.
+                                    </div>
+                                </div>
                                 
                                 <!-- Hidden fields for live data -->
                                 <input type="hidden" id="live_lat" name="live_lat">
@@ -283,9 +292,13 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-success" id="addDroneSubmitBtn" disabled>
                         <i class="fas fa-plus me-2"></i>Add Drone
                     </button>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Connect wirelessly first to enable drone registration
+                    </small>
                 </div>
             </form>
         </div>
@@ -1721,17 +1734,28 @@ window.checkWirelessStatus = function() {
     });
 }
 
+// Global variables for wireless connection
+let wirelessConnectionEstablished = false;
+let connectedDroneData = null;
+
 // Connect wirelessly function for the Add Drone modal
 window.connectWirelessly = function() {
     const connectionStatus = document.getElementById('connectionStatus');
     const liveDataDisplay = document.getElementById('liveDataDisplay');
     const connectionMessage = document.getElementById('connectionMessage');
+    const connectBtn = document.getElementById('connectWirelessBtn');
+    const submitBtn = document.getElementById('addDroneSubmitBtn');
+    const connectionSuccess = document.getElementById('connectionSuccess');
+    
+    // Disable button and show loading
+    connectBtn.disabled = true;
+    connectBtn.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>Connecting...';
     
     // Show connection status
     connectionStatus.classList.remove('d-none');
-    connectionMessage.textContent = 'Scanning for live Pixhawk and Raspberry Pi devices...';
+    connectionMessage.textContent = 'Scanning wireless network for live Pixhawk flight controllers and Raspberry Pi devices...';
     
-    // Scan for available drones
+    // Step 1: Scan for available live drones
     fetch('/admin/scan-wireless-drones', {
         method: 'POST',
         headers: {
@@ -1741,11 +1765,11 @@ window.connectWirelessly = function() {
     .then(response => response.json())
     .then(data => {
         if (data.success && data.drones.length > 0) {
-            // Found drones, try to connect to the first available one
-            const drone = data.drones[0];
-            connectionMessage.textContent = `Found ${drone.name}, establishing connection...`;
+            // Found live drones
+            const drone = data.drones[0]; // Connect to first available
+            connectionMessage.textContent = `Found live drone system: ${drone.name} - Establishing MAVLink connection...`;
             
-            // Attempt connection
+            // Step 2: Establish live connection to Pixhawk
             return fetch(`/admin/drones/connect/${drone.id}`, {
                 method: 'POST',
                 headers: {
@@ -1753,22 +1777,22 @@ window.connectWirelessly = function() {
                 },
                 body: JSON.stringify({
                     ip_address: drone.ip_address,
-                    type: 'wireless'
+                    type: 'wireless_live'
                 })
             });
         } else {
-            throw new Error('No live drones found on network');
+            throw new Error('No live Pixhawk or Raspberry Pi devices found on network. Please ensure devices are powered and connected.');
         }
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            connectionMessage.textContent = 'Connected! Getting live telemetry data...';
+            connectionMessage.textContent = 'MAVLink connection established! Retrieving live telemetry from Pixhawk...';
             
-            // Get live telemetry
-            return fetch(`/admin/drones/telemetry/${data.drone_id}`);
+            // Step 3: Get live telemetry data from connected Pixhawk
+            return fetch(`/admin/drones/telemetry/${data.drone_id || 'live_connection'}`);
         } else {
-            throw new Error(data.error || 'Connection failed');
+            throw new Error(data.error || 'Failed to establish MAVLink connection to Pixhawk');
         }
     })
     .then(response => response.json())
@@ -1776,44 +1800,100 @@ window.connectWirelessly = function() {
         if (data.success && data.telemetry) {
             const telemetry = data.telemetry;
             
-            // Update connection status
+            // Update connection status to success
             connectionStatus.innerHTML = `
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle me-2"></i>
-                    Successfully connected to live Pixhawk and Raspberry Pi!
+                    <strong>Live Connection Successful!</strong>
+                    <br>• Pixhawk flight controller: Connected
+                    <br>• Raspberry Pi: Connected  
+                    <br>• MAVLink telemetry: Active
+                    <br>• GPS status: ${telemetry.gps ? telemetry.gps.fix_type : 'Checking...'}
                 </div>
             `;
             
-            // Show live data
-            if (telemetry.position) {
-                document.getElementById('liveGPS').textContent = 
-                    `${telemetry.position.lat.toFixed(6)}, ${telemetry.position.lon.toFixed(6)}`;
+            // Display live telemetry data
+            if (telemetry.position && telemetry.position.lat && telemetry.position.lon) {
+                document.getElementById('liveGPS').innerHTML = `
+                    <span class="badge bg-success me-1">LIVE</span>
+                    ${telemetry.position.lat.toFixed(6)}, ${telemetry.position.lon.toFixed(6)}
+                `;
                 document.getElementById('live_lat').value = telemetry.position.lat;
                 document.getElementById('live_lon').value = telemetry.position.lon;
+            } else {
+                document.getElementById('liveGPS').innerHTML = `
+                    <span class="badge bg-warning me-1">NO GPS</span>
+                    Waiting for GPS fix...
+                `;
             }
             
-            if (telemetry.battery) {
-                document.getElementById('liveBattery').textContent = `${telemetry.battery.remaining}%`;
+            if (telemetry.battery && telemetry.battery.remaining) {
+                document.getElementById('liveBattery').innerHTML = `
+                    <span class="badge bg-success me-1">LIVE</span>
+                    ${telemetry.battery.remaining}%
+                `;
+            } else {
+                document.getElementById('liveBattery').innerHTML = `
+                    <span class="badge bg-info me-1">LIVE</span>
+                    Reading...
+                `;
             }
             
-            // Mark as wirelessly connected
+            // Mark as wirelessly connected and store data
             document.getElementById('wireless_connected').value = 'true';
-            document.getElementById('drone_id').value = data.drone_id;
+            document.getElementById('drone_id').value = data.drone_id || `live_${Date.now()}`;
             
+            // Show live data display
             liveDataDisplay.classList.remove('d-none');
+            connectionSuccess.classList.remove('d-none');
+            
+            // Enable the Add Drone button
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('btn-secondary');
+            submitBtn.classList.add('btn-success');
+            
+            // Update connect button
+            connectBtn.innerHTML = '<i class="fas fa-check me-2"></i>Connected';
+            connectBtn.classList.remove('btn-primary');
+            connectBtn.classList.add('btn-success');
+            
+            // Store connection data globally
+            wirelessConnectionEstablished = true;
+            connectedDroneData = {
+                telemetry: telemetry,
+                drone_id: data.drone_id,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('Live wireless connection established:', connectedDroneData);
             
         } else {
-            throw new Error('No telemetry data available');
+            throw new Error('No live telemetry data available from Pixhawk');
         }
     })
     .catch(error => {
+        console.error('Wireless connection error:', error);
+        
         connectionStatus.innerHTML = `
-            <div class="alert alert-warning">
+            <div class="alert alert-danger">
                 <i class="fas fa-exclamation-triangle me-2"></i>
-                Connection failed: ${error.message}
-                <br><small>Make sure Pixhawk is powered and Raspberry Pi is running the drone service.</small>
+                <strong>Connection Failed</strong>
+                <br>${error.message}
+                <br><br><strong>Troubleshooting:</strong>
+                <ul class="mb-0 mt-1">
+                    <li>Ensure Pixhawk flight controller is powered on</li>
+                    <li>Verify Raspberry Pi is running and connected</li>
+                    <li>Check that both devices are on the same wireless network</li>
+                    <li>Confirm MAVLink communication is enabled</li>
+                </ul>
             </div>
         `;
+        
+        // Reset button
+        connectBtn.disabled = false;
+        connectBtn.innerHTML = '<i class="fas fa-satellite-dish me-2"></i>Try Again';
+        connectBtn.classList.remove('btn-success');
+        connectBtn.classList.add('btn-primary');
     });
 }
 
