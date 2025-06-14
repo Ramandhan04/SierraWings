@@ -16,11 +16,8 @@
                     <p class="text-muted mb-0">Monitor and manage your drone fleet</p>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createDroneModal">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDroneModal">
                         <i class="fas fa-plus me-2"></i>Add Drone
-                    </button>
-                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#wirelessDroneModal">
-                        <i class="fas fa-wifi me-2"></i>Connect Wireless
                     </button>
                     <button class="btn btn-info" onclick="checkWirelessStatus()">
                         <i class="fas fa-signal me-2"></i>Network Status
@@ -1324,9 +1321,286 @@ window.showDroneDetails = function(droneName) {
     });
 }
 
+// Scan for live drones on network
+function scanForDrones() {
+    const listContainer = document.getElementById('liveDronesList');
+    listContainer.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Scanning...</span>
+            </div>
+            <p class="mt-2">Scanning for live drones on network...</p>
+        </div>
+    `;
+    
+    fetch('/admin/drones/wireless-status')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.wireless_status.length > 0) {
+            displayAvailableDrones(data.wireless_status);
+        } else {
+            listContainer.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                    <p class="text-muted">No live drones found on network</p>
+                    <small class="text-muted">Make sure drones are powered on and connected to the same network</small>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        listContainer.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
+                <p class="text-danger">Error scanning for drones</p>
+                <small class="text-muted">${error.message}</small>
+            </div>
+        `;
+    });
+}
+
+function displayAvailableDrones(drones) {
+    const listContainer = document.getElementById('liveDronesList');
+    let dronesHtml = '<h6 class="mb-3">Available Live Drones:</h6>';
+    
+    drones.forEach(drone => {
+        const isConnected = drone.live_connected;
+        const hasGps = drone.location && drone.location.lat && drone.location.lon;
+        
+        dronesHtml += `
+            <div class="card mb-2 drone-option ${isConnected ? 'border-success' : 'border-warning'}" 
+                 onclick="selectLiveDrone('${drone.drone_id}', '${drone.name}', '${drone.model}')">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">
+                                <i class="fas fa-helicopter me-2"></i>${drone.name}
+                                <span class="badge ${isConnected ? 'bg-success' : 'bg-warning'} ms-2">
+                                    ${isConnected ? 'Connected' : 'Discovered'}
+                                </span>
+                            </h6>
+                            <p class="mb-1 text-muted">${drone.model || 'Unknown Model'}</p>
+                            <small class="text-muted">
+                                Battery: ${drone.battery_level}% | 
+                                Signal: ${drone.signal_strength}% |
+                                ${hasGps ? `GPS: ${drone.location.lat.toFixed(4)}, ${drone.location.lon.toFixed(4)}` : 'No GPS'}
+                            </small>
+                        </div>
+                        <div>
+                            <i class="fas fa-chevron-right text-muted"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    listContainer.innerHTML = dronesHtml;
+}
+
+function selectLiveDrone(droneId, droneName, droneModel) {
+    // Update form fields
+    document.getElementById('wirelessDroneName').value = droneName;
+    document.getElementById('wirelessDroneModel').value = droneModel;
+    
+    // Store selected drone
+    selectedDrone = droneId;
+    
+    // Show connection status
+    const statusDiv = document.getElementById('connectionStatus');
+    statusDiv.classList.remove('d-none');
+    statusDiv.innerHTML = `
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Connecting...</span>
+            </div>
+            <span>Connecting to ${droneName}...</span>
+        </div>
+    `;
+    
+    // Highlight selected drone
+    document.querySelectorAll('.drone-option').forEach(card => {
+        card.classList.remove('border-primary', 'bg-light');
+    });
+    event.target.closest('.drone-option').classList.add('border-primary', 'bg-light');
+    
+    // Connect and get live GPS data
+    connectToLiveDrone(droneId, droneName);
+}
+
+function connectToLiveDrone(droneId, droneName) {
+    fetch(`/admin/drones/connect/${droneId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const statusDiv = document.getElementById('connectionStatus');
+        
+        if (data.success) {
+            statusDiv.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-circle text-success me-2"></i>
+                    <span>Connected to ${droneName}</span>
+                </div>
+            `;
+            
+            // Start live GPS data updates
+            startLiveGpsUpdates(droneId);
+        } else {
+            statusDiv.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    <span>Connection failed: ${data.error}</span>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        const statusDiv = document.getElementById('connectionStatus');
+        statusDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas fa-times-circle text-danger me-2"></i>
+                <span>Connection error: ${error.message}</span>
+            </div>
+        `;
+    });
+}
+
+function startLiveGpsUpdates(droneId) {
+    // Show GPS data section
+    document.getElementById('liveGpsData').classList.remove('d-none');
+    
+    // Clear any existing interval
+    if (liveGpsInterval) {
+        clearInterval(liveGpsInterval);
+    }
+    
+    // Update GPS data every 2 seconds
+    liveGpsInterval = setInterval(() => {
+        updateLiveGpsData(droneId);
+    }, 2000);
+    
+    // Initial update
+    updateLiveGpsData(droneId);
+}
+
+function updateLiveGpsData(droneId) {
+    fetch(`/admin/drones/telemetry/${droneId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.telemetry) {
+            const telemetry = data.telemetry;
+            
+            // Update GPS position
+            if (telemetry.position) {
+                document.getElementById('liveLatValue').textContent = telemetry.position.lat.toFixed(6);
+                document.getElementById('liveLonValue').textContent = telemetry.position.lon.toFixed(6);
+            }
+            
+            // Update GPS status
+            if (telemetry.gps) {
+                document.getElementById('gpsStatusValue').textContent = telemetry.gps.fix_type || 'No Fix';
+                document.getElementById('satelliteCountValue').textContent = `${telemetry.gps.satellites_visible || 0} satellites`;
+            }
+            
+            // Update battery and flight mode
+            if (telemetry.battery) {
+                document.getElementById('batteryValue').textContent = `${telemetry.battery.remaining || 0}%`;
+            }
+            document.getElementById('flightModeValue').textContent = telemetry.flight_mode || 'Unknown';
+        }
+    })
+    .catch(error => {
+        console.error('Error updating GPS data:', error);
+    });
+}
+
+function addWirelessDrone() {
+    const droneName = document.getElementById('wirelessDroneName').value;
+    const droneModel = document.getElementById('wirelessDroneModel').value;
+    
+    if (!droneName || !droneModel) {
+        alert('Please enter drone name and model');
+        return;
+    }
+    
+    if (!selectedDrone) {
+        alert('Please select and connect to a live drone first');
+        return;
+    }
+    
+    // Get current GPS coordinates from the live data
+    const lat = document.getElementById('liveLatValue').textContent;
+    const lon = document.getElementById('liveLonValue').textContent;
+    
+    if (lat === '--' || lon === '--') {
+        alert('No live GPS data available. Please wait for GPS fix.');
+        return;
+    }
+    
+    // Create drone with live GPS data
+    const formData = new FormData();
+    formData.append('name', droneName);
+    formData.append('model', droneModel);
+    formData.append('live_lat', lat);
+    formData.append('live_lon', lon);
+    formData.append('wireless_connected', 'true');
+    formData.append('drone_id', selectedDrone);
+    
+    fetch('/admin/create-drone', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            // Clear interval
+            if (liveGpsInterval) {
+                clearInterval(liveGpsInterval);
+            }
+            
+            // Close modal and refresh page
+            bootstrap.Modal.getInstance(document.getElementById('addDroneModal')).hide();
+            location.reload();
+        } else {
+            alert('Failed to add drone');
+        }
+    })
+    .catch(error => {
+        alert('Error adding drone: ' + error.message);
+    });
+}
+
+function refreshDroneList() {
+    scanForDrones();
+}
+
 // Reset modal when closed
-document.getElementById('wirelessDroneModal').addEventListener('hidden.bs.modal', function () {
-    resetConnectionModal();
+document.getElementById('addDroneModal').addEventListener('hidden.bs.modal', function () {
+    // Clear live GPS interval
+    if (liveGpsInterval) {
+        clearInterval(liveGpsInterval);
+    }
+    
+    // Reset form and data
+    document.getElementById('manualDroneForm').reset();
+    document.getElementById('wirelessDroneName').value = '';
+    document.getElementById('wirelessDroneModel').value = '';
+    document.getElementById('liveDronesList').innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-satellite-dish fa-2x text-muted mb-2"></i>
+            <p class="text-muted">Click "Scan Network" to discover live drones</p>
+        </div>
+    `;
+    document.getElementById('connectionStatus').classList.add('d-none');
+    document.getElementById('liveGpsData').classList.add('d-none');
+    
+    // Reset tab to manual entry
+    document.getElementById('manual-tab').click();
+    
+    selectedDrone = null;
 });
 
 // Define all functions in global scope without window prefix
