@@ -475,13 +475,19 @@ function getStatusColor(status) {
 let currentConnectionId = null;
 let selectedDroneInfo = null;
 
-function scanForDrones() {
+// Make functions globally accessible
+window.scanForDrones = function() {
     const scanIcon = document.getElementById('scanIcon');
     const scanPhase = document.getElementById('scanPhase');
     const discoveredPhase = document.getElementById('discoveredDronesPhase');
     
+    // Clear previous results and show scanning state
+    document.getElementById('discoveredDronesList').innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Scanning for live Pixhawk drones...</p></div>';
+    
     // Show scanning animation
     scanIcon.classList.add('fa-spin');
+    scanPhase.style.display = 'none';
+    discoveredPhase.style.display = 'block';
     
     fetch('{{ url_for("admin.scan_wireless_drones") }}', {
         method: 'POST',
@@ -495,23 +501,28 @@ function scanForDrones() {
         
         if (data.success) {
             displayDiscoveredDrones(data.drones);
-            scanPhase.style.display = 'none';
-            discoveredPhase.style.display = 'block';
-        } else {
             if (window.showSierraWingsNotification) {
-                showSierraWingsNotification('Scan failed: ' + data.error, 'error');
+                showSierraWingsNotification(`Found ${data.drones.length} live drones on network`, 'success');
+            }
+        } else {
+            document.getElementById('discoveredDronesList').innerHTML = 
+                '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>No live drones detected. Ensure Pixhawk systems are powered and Raspberry Pi clients are running.</div>';
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification('No live drones found on network', 'warning');
             }
         }
     })
     .catch(error => {
         scanIcon.classList.remove('fa-spin');
+        document.getElementById('discoveredDronesList').innerHTML = 
+            '<div class="alert alert-danger"><i class="fas fa-times me-2"></i>Network scan failed</div>';
         if (window.showSierraWingsNotification) {
-            showSierraWingsNotification('Network error during scan', 'error');
+            showSierraWingsNotification('Network error during live scan', 'error');
         }
     });
-}
+};
 
-function displayDiscoveredDrones(drones) {
+window.displayDiscoveredDrones = function(drones) {
     const dronesList = document.getElementById('discoveredDronesList');
     dronesList.innerHTML = '';
     
@@ -571,16 +582,20 @@ function displayDiscoveredDrones(drones) {
     });
 }
 
-function connectToDrone(droneId, droneName, droneModel, ipAddress) {
+window.connectToDrone = function(droneId, droneName, droneModel, ipAddress) {
     const discoveredPhase = document.getElementById('discoveredDronesPhase');
     const connectionPhase = document.getElementById('connectionPhase');
     const progressBar = document.querySelector('#connectionProgress .progress-bar');
-    const stepsDiv = document.getElementById('connectionSteps');
+    const stepsContainer = document.getElementById('connectionSteps');
     
     discoveredPhase.style.display = 'none';
     connectionPhase.style.display = 'block';
     
     selectedDroneInfo = { droneId, droneName, droneModel, ipAddress };
+    
+    // Show live connection attempt
+    stepsContainer.innerHTML = '<div class="alert alert-info"><i class="fas fa-satellite-dish me-2"></i>Establishing live MAVLink connection to Pixhawk...</div>';
+    progressBar.style.width = '10%';
     
     fetch('{{ url_for("admin.connect_wireless_drone") }}', {
         method: 'POST',
@@ -599,22 +614,27 @@ function connectToDrone(droneId, droneName, droneModel, ipAddress) {
         if (data.success) {
             currentConnectionId = data.connection_id;
             simulateConnectionProgress(data.steps);
-        } else {
             if (window.showSierraWingsNotification) {
-                showSierraWingsNotification('Connection failed: ' + data.error, 'error');
+                showSierraWingsNotification('Live connection established to Pixhawk', 'success');
             }
-            resetConnectionModal();
+        } else {
+            stepsContainer.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times me-2"></i>Live connection failed: ${data.error}</div>`;
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification('Live connection failed: ' + data.error, 'error');
+            }
+            setTimeout(resetConnectionModal, 3000);
         }
     })
     .catch(error => {
+        stepsContainer.innerHTML = '<div class="alert alert-danger"><i class="fas fa-times me-2"></i>Network error during live connection</div>';
         if (window.showSierraWingsNotification) {
-            showSierraWingsNotification('Network error during connection', 'error');
+            showSierraWingsNotification('Network error during live connection', 'error');
         }
-        resetConnectionModal();
+        setTimeout(resetConnectionModal, 3000);
     });
-}
+};
 
-function simulateConnectionProgress(steps) {
+window.simulateConnectionProgress = function(steps) {
     const progressBar = document.querySelector('#connectionProgress .progress-bar');
     const stepsDiv = document.getElementById('connectionSteps');
     let currentStep = 0;
@@ -716,7 +736,7 @@ function registerConnectedDrone() {
     });
 }
 
-function resetConnectionModal() {
+window.resetConnectionModal = function() {
     document.getElementById('scanPhase').style.display = 'block';
     document.getElementById('discoveredDronesPhase').style.display = 'none';
     document.getElementById('connectionPhase').style.display = 'none';
@@ -725,11 +745,21 @@ function resetConnectionModal() {
     
     currentConnectionId = null;
     selectedDroneInfo = null;
-}
+};
 
-function checkWirelessStatus() {
+window.checkWirelessStatus = function() {
     const modal = new bootstrap.Modal(document.getElementById('networkStatusModal'));
     modal.show();
+    
+    const contentDiv = document.getElementById('networkStatusContent');
+    contentDiv.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Checking live drone network status...</p>
+        </div>
+    `;
     
     fetch('{{ url_for("admin.wireless_status") }}')
     .then(response => response.json())
@@ -737,25 +767,15 @@ function checkWirelessStatus() {
         if (data.success) {
             displayNetworkStatus(data);
         } else {
-            document.getElementById('networkStatusContent').innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Failed to load network status: ${data.error}
-                </div>
-            `;
+            contentDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-times me-2"></i>Failed to get live network status</div>';
         }
     })
     .catch(error => {
-        document.getElementById('networkStatusContent').innerHTML = `
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Network error occurred while checking status
-            </div>
-        `;
+        contentDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Network error while checking live status</div>';
     });
-}
+};
 
-function displayNetworkStatus(data) {
+window.displayNetworkStatus = function(data) {
     const content = document.getElementById('networkStatusContent');
     
     let statusHtml = `
@@ -864,7 +884,7 @@ function displayNetworkStatus(data) {
     `;
 }
 
-function testDroneConnection(droneId) {
+window.testDroneConnection = function(droneId) {
     fetch(`{{ url_for("admin.test_drone_connection", drone_id=0) }}`.replace('0', droneId), {
         method: 'POST'
     })
@@ -885,7 +905,7 @@ function testDroneConnection(droneId) {
     });
 }
 
-function displayConnectionTestResults(data) {
+window.displayConnectionTestResults = function(data) {
     const modal = new bootstrap.Modal(document.getElementById('connectionTestModal'));
     const content = document.getElementById('testResultsContent');
     
