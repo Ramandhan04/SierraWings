@@ -35,12 +35,6 @@
                 <img src="{{ url_for('static', filename='images/sierrawings-logo.jpg') }}" alt="SierraWings" class="navbar-logo me-2">
                 <span class="brand-text">SierraWings</span>
             </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <!-- Clean navbar with only logo -->
         </div>
     </nav>
 
@@ -78,8 +72,6 @@
     <!-- Theme Toggle Script -->
     <script>
         // Theme management
-        const themeToggle = document.getElementById('themeToggle');
-        const themeIcon = document.getElementById('themeIcon');
         const html = document.documentElement;
         
         // Get saved theme or default to light
@@ -88,34 +80,42 @@
         // Apply saved theme on page load
         function applyTheme(theme) {
             html.setAttribute('data-theme', theme);
-            if (theme === 'dark') {
-                themeIcon.className = 'fas fa-sun';
-                themeToggle.title = 'Switch to Light Mode';
-            } else {
-                themeIcon.className = 'fas fa-moon';
-                themeToggle.title = 'Switch to Dark Mode';
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            
+            if (themeIcon && themeToggle) {
+                if (theme === 'dark') {
+                    themeIcon.className = 'fas fa-sun';
+                    themeToggle.title = 'Switch to Light Mode';
+                } else {
+                    themeIcon.className = 'fas fa-moon';
+                    themeToggle.title = 'Switch to Dark Mode';
+                }
             }
         }
         
         // Initialize theme
         applyTheme(savedTheme);
         
-        // Theme toggle functionality
-        if (themeToggle) {
-            themeToggle.addEventListener('click', function() {
-                const currentTheme = html.getAttribute('data-theme') || 'light';
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                
-                applyTheme(newTheme);
-                localStorage.setItem('sierrawings-theme', newTheme);
-                
-                // Add smooth transition effect
-                document.body.style.transition = 'all 0.3s ease';
-                setTimeout(() => {
-                    document.body.style.transition = '';
-                }, 300);
-            });
-        }
+        // Theme toggle functionality - will work when button exists
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) {
+                themeToggle.addEventListener('click', function() {
+                    const currentTheme = html.getAttribute('data-theme') || 'light';
+                    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                    
+                    applyTheme(newTheme);
+                    localStorage.setItem('sierrawings-theme', newTheme);
+                    
+                    // Add smooth transition effect
+                    document.body.style.transition = 'all 0.3s ease';
+                    setTimeout(() => {
+                        document.body.style.transition = '';
+                    }, 300);
+                });
+            }
+        });
     </script>
     
     {% block extra_js %}{% endblock %}
