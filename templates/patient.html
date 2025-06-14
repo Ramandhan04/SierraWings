@@ -298,6 +298,48 @@ let currentMissionId = null;
 let droneMarker = null;
 let flightPath = null;
 
+// Sierra Wings notification system
+function showSierraWingsNotification(message, type = 'info', duration = 5000) {
+    // Remove existing notifications
+    const existingNotifications = document.querySelectorAll('.sierrawings-notification');
+    existingNotifications.forEach(n => n.remove());
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `sierrawings-notification alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = `
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        max-width: 500px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    const icon = type === 'success' ? 'check-circle' : 
+                 type === 'danger' ? 'exclamation-triangle' : 
+                 type === 'warning' ? 'exclamation-circle' : 'info-circle';
+    
+    notification.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-${icon} me-2"></i>
+            <div class="flex-grow-1">${message}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after duration
+    if (duration > 0) {
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, duration);
+    }
+}
+
 // Emergency panic button functionality
 function triggerEmergencyRequest() {
     if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
@@ -479,48 +521,6 @@ function updateTelemetry() {
 
 function viewMissionDetails(missionId) {
     window.location.href = `/patient/mission/${missionId}/details`;
-}
-
-// Sierra Wings notification system
-function showSierraWingsNotification(message, type = 'info', duration = 5000) {
-    // Remove existing notifications
-    const existingNotifications = document.querySelectorAll('.sierrawings-notification');
-    existingNotifications.forEach(n => n.remove());
-    
-    // Create notification element
-    const notification = document.createElement('div');
-    notification.className = `sierrawings-notification alert alert-${type} alert-dismissible fade show position-fixed`;
-    notification.style.cssText = `
-        top: 20px;
-        right: 20px;
-        z-index: 9999;
-        min-width: 300px;
-        max-width: 500px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    `;
-    
-    const icon = type === 'success' ? 'check-circle' : 
-                 type === 'danger' ? 'exclamation-triangle' : 
-                 type === 'warning' ? 'exclamation-circle' : 'info-circle';
-    
-    notification.innerHTML = `
-        <div class="d-flex align-items-center">
-            <i class="fas fa-${icon} me-2"></i>
-            <div class="flex-grow-1">${message}</div>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // Auto-remove after duration
-    if (duration > 0) {
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, duration);
-    }
 }
 </script>
 {% endblock %}
