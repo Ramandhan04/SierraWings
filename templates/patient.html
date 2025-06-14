@@ -657,7 +657,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const emergencyBtn = document.getElementById('emergencyBtn');
     const emergencyCardBtn = document.getElementById('emergencyCardBtn');
     
-    function handleEmergencyClick() {
+    function handleEmergencyClick(e) {
+        e.preventDefault();
         if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
             showEmergencyModal();
         }
@@ -665,11 +666,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (emergencyBtn) {
         emergencyBtn.addEventListener('click', handleEmergencyClick);
+        console.log('Emergency header button initialized');
     }
     
     if (emergencyCardBtn) {
         emergencyCardBtn.addEventListener('click', handleEmergencyClick);
+        console.log('Emergency card button initialized');
     }
+    
+    // Also handle any dynamically created emergency buttons
+    document.addEventListener('click', function(e) {
+        if (e.target && (e.target.id === 'emergencyBtn' || e.target.id === 'emergencyCardBtn' || e.target.classList.contains('emergency-card-btn'))) {
+            handleEmergencyClick(e);
+        }
+    });
 });
 </script>
 {% endblock %}

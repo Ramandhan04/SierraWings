@@ -242,8 +242,10 @@ def emergency_request():
         
         return jsonify({
             'success': True,
-            'message': 'Emergency drone dispatch initiated! All clinics have been notified.',
-            'mission_id': mission.id
+            'message': f'Emergency drone dispatch initiated! Cost: {total_cost} NLE. All clinics have been notified.',
+            'mission_id': mission.id,
+            'cost': total_cost,
+            'weight': quantity
         })
         
     except Exception as e:
