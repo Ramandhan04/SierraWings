@@ -340,100 +340,111 @@ function showSierraWingsNotification(message, type = 'info', duration = 5000) {
     }
 }
 
-// Emergency panic button functionality
-function triggerEmergencyRequest() {
-    if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
-        // Create emergency modal
-        const emergencyModal = new bootstrap.Modal(document.createElement('div'));
-        document.body.insertAdjacentHTML('beforeend', `
-            <div class="modal fade" id="emergencyModal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content border-danger">
-                        <div class="modal-header bg-danger text-white">
-                            <h5 class="modal-title">
-                                <i class="fas fa-exclamation-triangle me-2"></i>EMERGENCY REQUEST
-                            </h5>
+// Emergency functionality
+function showEmergencyModal() {
+    // Remove any existing emergency modal
+    const existingModal = document.getElementById('emergencyModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Create emergency modal HTML
+    const modalHTML = `
+        <div class="modal fade" id="emergencyModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content border-danger">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-exclamation-triangle me-2"></i>EMERGENCY REQUEST
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-heartbeat me-2"></i>
+                            <strong>Emergency medical delivery request initiated!</strong>
                         </div>
-                        <div class="modal-body">
-                            <div class="alert alert-danger">
-                                <i class="fas fa-heartbeat me-2"></i>
-                                <strong>Emergency medical delivery request initiated!</strong>
+                        <form id="emergencyForm">
+                            <div class="mb-3">
+                                <label class="form-label">Emergency Type <span class="text-danger">*</span></label>
+                                <select class="form-select" name="emergency_type" required>
+                                    <option value="">Select emergency type</option>
+                                    <option value="cardiac">Cardiac Emergency</option>
+                                    <option value="respiratory">Respiratory Emergency</option>
+                                    <option value="trauma">Trauma/Injury</option>
+                                    <option value="medication">Critical Medication</option>
+                                    <option value="blood">Blood/Plasma</option>
+                                    <option value="organ">Organ Transport</option>
+                                </select>
                             </div>
-                            <form id="emergencyForm">
-                                <div class="mb-3">
-                                    <label class="form-label">Emergency Type</label>
-                                    <select class="form-select" name="emergency_type" required>
-                                        <option value="">Select emergency type</option>
-                                        <option value="cardiac">Cardiac Emergency</option>
-                                        <option value="respiratory">Respiratory Emergency</option>
-                                        <option value="trauma">Trauma/Injury</option>
-                                        <option value="medication">Critical Medication</option>
-                                        <option value="blood">Blood/Plasma</option>
-                                        <option value="organ">Organ Transport</option>
-                                    </select>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Emergency Details</label>
-                                    <textarea class="form-control" name="emergency_details" rows="3" 
-                                              placeholder="Describe the emergency situation..." required></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Delivery Address</label>
-                                    <textarea class="form-control" name="delivery_address" rows="2" 
-                                              placeholder="Emergency delivery location..." required></textarea>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" onclick="closeEmergencyModal()">Cancel</button>
-                            <button type="button" class="btn btn-danger" onclick="submitEmergencyRequest()">
-                                <i class="fas fa-ambulance me-2"></i>DISPATCH EMERGENCY DRONE
-                            </button>
-                        </div>
+                            <div class="mb-3">
+                                <label class="form-label">Emergency Details <span class="text-danger">*</span></label>
+                                <textarea class="form-control" name="emergency_details" rows="3" 
+                                          placeholder="Describe the emergency situation..." required></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Delivery Address <span class="text-danger">*</span></label>
+                                <textarea class="form-control" name="delivery_address" rows="2" 
+                                          placeholder="Emergency delivery location..." required></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" onclick="submitEmergencyRequest()">
+                            <i class="fas fa-ambulance me-2"></i>DISPATCH EMERGENCY DRONE
+                        </button>
                     </div>
                 </div>
             </div>
-        `);
-        
-        new bootstrap.Modal(document.getElementById('emergencyModal')).show();
-    }
-}
-
-function closeEmergencyModal() {
-    const modal = document.getElementById('emergencyModal');
-    if (modal) {
-        bootstrap.Modal.getInstance(modal).hide();
-        modal.remove();
-    }
+        </div>
+    `;
+    
+    // Add modal to document
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('emergencyModal'));
+    modal.show();
 }
 
 function submitEmergencyRequest() {
     const form = document.getElementById('emergencyForm');
     const formData = new FormData(form);
     
-    // Add emergency priority
-    formData.append('priority', 'emergency');
-    formData.append('payload_type', formData.get('emergency_type') + ' - EMERGENCY');
-    formData.append('pickup_address', 'Emergency Medical Center');
-    formData.append('special_instructions', 'EMERGENCY DELIVERY - PRIORITY 1');
+    // Validate form
+    if (!formData.get('emergency_type') || !formData.get('emergency_details') || !formData.get('delivery_address')) {
+        showSierraWingsNotification('Please fill in all required fields.', 'warning');
+        return;
+    }
     
+    // Submit emergency request
     fetch('/patient/emergency-request', {
         method: 'POST',
         body: formData
-    }).then(response => response.json())
+    })
+    .then(response => response.json())
     .then(data => {
-        closeEmergencyModal();
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('emergencyModal'));
+        modal.hide();
+        
         if (data.success) {
-            showSierraWingsNotification('Emergency drone dispatch initiated! ETA: 8-12 minutes', 'success');
+            showSierraWingsNotification('Emergency drone dispatch initiated! All clinics notified. ETA: 8-12 minutes', 'success', 8000);
             setTimeout(() => location.reload(), 2000);
         } else {
             showSierraWingsNotification('Emergency request failed. Please call 117 immediately.', 'danger');
         }
-    }).catch(error => {
-        closeEmergencyModal();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        const modal = bootstrap.Modal.getInstance(document.getElementById('emergencyModal'));
+        modal.hide();
         showSierraWingsNotification('Emergency request failed. Please call 117 immediately.', 'danger');
     });
 }
+
+
 
 function trackMission(missionId) {
     currentMissionId = missionId;
@@ -527,7 +538,11 @@ function viewMissionDetails(missionId) {
 document.addEventListener('DOMContentLoaded', function() {
     const emergencyBtn = document.getElementById('emergencyBtn');
     if (emergencyBtn) {
-        emergencyBtn.addEventListener('click', triggerEmergencyRequest);
+        emergencyBtn.addEventListener('click', function() {
+            if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
+                showEmergencyModal();
+            }
+        });
     }
 });
 </script>
