@@ -696,7 +696,10 @@ function displayNetworkStatus(data) {
                 <td>
                     <small class="text-${drone.live_connected ? 'success' : 'muted'}">${drone.data_rate}</small>
                 </td>
-                <td><small>${new Date(drone.last_seen).toLocaleString()}</small></td>
+                <td>
+                    <small>${new Date(drone.last_seen).toLocaleString()}</small>
+                    ${drone.location ? `<br><small class="text-success"><i class="fas fa-map-marker-alt me-1"></i>GPS: ${drone.location.lat.toFixed(4)}, ${drone.location.lon.toFixed(4)}</small>` : '<br><small class="text-muted"><i class="fas fa-times me-1"></i>No GPS</small>'}
+                </td>
             </tr>
         `;
     });
@@ -748,16 +751,18 @@ function displayConnectionTestResults(data) {
     
     if (data.telemetry) {
         resultsHtml += `
-            <h6>Live Telemetry:</h6>
+            <h6>Live Pixhawk Telemetry:</h6>
             <div class="row">
                 <div class="col-md-6">
                     <small><strong>Battery:</strong> ${data.telemetry.battery || 'N/A'}%</small><br>
-                    <small><strong>GPS:</strong> ${data.telemetry.gps_status || 'No Fix'}</small><br>
+                    <small><strong>GPS Status:</strong> ${data.telemetry.gps_status || 'No Fix'}</small><br>
+                    <small><strong>Satellites:</strong> ${data.telemetry.satellites || 0}</small><br>
                     <small><strong>Armed:</strong> ${data.telemetry.armed ? 'Yes' : 'No'}</small>
                 </div>
                 <div class="col-md-6">
                     <small><strong>Flight Mode:</strong> ${data.telemetry.flight_mode || 'Unknown'}</small><br>
                     <small><strong>Altitude:</strong> ${data.telemetry.altitude || 'N/A'} m</small><br>
+                    <small><strong>GPS Position:</strong> ${data.telemetry.lat ? data.telemetry.lat.toFixed(6) + ', ' + data.telemetry.lon.toFixed(6) : 'No GPS'}</small><br>
                     <small><strong>Signal:</strong> ${data.telemetry.signal_strength || 'N/A'}%</small>
                 </div>
             </div>

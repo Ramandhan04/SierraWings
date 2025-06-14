@@ -530,8 +530,8 @@ def wireless_status():
                     drone.location_lat = pos['lat']
                     drone.location_lon = pos['lon']
                     
-                    # Log GPS position update
-                    logging.info(f"GPS Update - Drone {drone.name}: {pos['lat']:.6f}, {pos['lon']:.6f}, Alt: {pos['alt']:.1f}m")
+                    # Log GPS position update from Pixhawk
+                    logging.info(f"Pixhawk GPS Update - Drone {drone.name}: {pos['lat']:.6f}, {pos['lon']:.6f}, Alt: {pos['alt']:.1f}m, Sats: {telemetry.get('gps', {}).get('satellites_visible', 0)}")
                 
                 db.session.commit()
             else:
