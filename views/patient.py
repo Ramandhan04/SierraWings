@@ -84,17 +84,16 @@ def request_delivery():
                 payload_weight = None
         
         # Create mission with clinic association
-        mission = Mission(
-            user_id=current_user.id,
-            payload_type=payload_type,
-            payload_weight=payload_weight,
-            pickup_address=f"{clinic.clinic_name}, {pickup_address}",
-            delivery_address=delivery_address,
-            priority=priority,
-            special_instructions=special_instructions,
-            status='pending',
-            notes=f"Clinic: {clinic.clinic_name} (ID: {clinic_id})"
-        )
+        mission = Mission()
+        mission.user_id = current_user.id
+        mission.payload_type = payload_type
+        mission.payload_weight = payload_weight
+        mission.pickup_address = f"{clinic.clinic_name}, {pickup_address}"
+        mission.delivery_address = delivery_address
+        mission.priority = priority
+        mission.special_instructions = special_instructions
+        mission.status = 'pending'
+        mission.notes = f"Clinic: {clinic.clinic_name} (ID: {clinic_id})"
         
         db.session.add(mission)
         db.session.commit()

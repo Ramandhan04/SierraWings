@@ -300,7 +300,10 @@ class RaspberryPiDroneClient:
             )
             
             # Wait for response
-            msg = self.mavlink.recv_match(type='AUTOPILOT_VERSION', blocking=True, timeout=5)
+            if self.mavlink and hasattr(self.mavlink, 'recv_match'):
+                msg = self.mavlink.recv_match(type='AUTOPILOT_VERSION', blocking=True, timeout=5)
+            else:
+                msg = None
             if msg:
                 return f"PX4 v{msg.flight_sw_version}"
             

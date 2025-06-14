@@ -270,7 +270,7 @@ def disable_2fa():
     token = request.form.get('token')
     password = request.form.get('password')
     
-    if not current_user.password_hash or not check_password_hash(current_user.password_hash, password):
+    if not password or not current_user.password_hash or not check_password_hash(current_user.password_hash, password):
         flash('Incorrect password.', 'error')
         return redirect(url_for('auth.two_factor_setup'))
     

@@ -90,7 +90,10 @@ class DroneController:
         try:
             while True:
                 try:
-                    data, addr = self.server_socket.recvfrom(1024)
+                    if self.server_socket:
+                        data, addr = self.server_socket.recvfrom(1024)
+                    else:
+                        break
                     response = json.loads(data.decode())
                     
                     if response.get('type') == 'drone_announce':
