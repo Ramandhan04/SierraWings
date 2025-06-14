@@ -242,6 +242,128 @@
     </div>
 </div>
 
+<!-- Wireless Drone Connection Modal -->
+<div class="modal fade" id="wirelessDroneModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-wifi me-2"></i>Wireless Drone Connection
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Scan Phase -->
+                <div id="scanPhase" class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-radar fa-3x text-primary mb-3" id="scanIcon"></i>
+                        <h6>Scanning for Available Drones</h6>
+                        <p class="text-muted">Please ensure drones are powered on and in discovery mode</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="scanForDrones()">
+                        <i class="fas fa-search me-2"></i>Start Scan
+                    </button>
+                </div>
+
+                <!-- Discovered Drones Phase -->
+                <div id="discoveredDronesPhase" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6>Discovered Drones</h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="scanForDrones()">
+                            <i class="fas fa-sync me-1"></i>Rescan
+                        </button>
+                    </div>
+                    <div id="discoveredDronesList" class="list-group">
+                        <!-- Discovered drones will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Connection Phase -->
+                <div id="connectionPhase" style="display: none;">
+                    <div class="text-center mb-4">
+                        <h6>Connecting to Drone</h6>
+                        <div id="connectionProgress" class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <div id="connectionSteps">
+                            <!-- Connection steps will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Registration Phase -->
+                <div id="registrationPhase" style="display: none;">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Connection Successful!</strong> Ready to register drone to fleet.
+                    </div>
+                    <div id="droneRegistrationInfo">
+                        <!-- Drone info for registration will be populated here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="registerDroneBtn" 
+                        style="display: none;" onclick="registerConnectedDrone()">
+                    <i class="fas fa-plus me-2"></i>Register to Fleet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Network Status Modal -->
+<div class="modal fade" id="networkStatusModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-signal me-2"></i>Wireless Network Status
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="networkStatusContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Checking network status...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="checkWirelessStatus()">
+                    <i class="fas fa-sync me-2"></i>Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Connection Test Modal -->
+<div class="modal fade" id="connectionTestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-wifi me-2"></i>Connection Test Results
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="testResultsContent">
+                <!-- Test results will be populated here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Drone Details Modal -->
 <div class="modal fade" id="droneDetailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
