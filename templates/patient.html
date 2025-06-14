@@ -62,7 +62,7 @@
                             </p>
                         </div>
                         <div class="col-md-4 text-end">
-                            <button class="btn btn-danger btn-lg emergency-card-btn" onclick="showEmergencyModal()">
+                            <button class="btn btn-danger btn-lg emergency-card-btn" id="emergencyCardBtn">
                                 <i class="fas fa-ambulance me-2"></i>REQUEST EMERGENCY DRONE
                             </button>
                             <div class="mt-2">
@@ -652,15 +652,23 @@ function viewMissionDetails(missionId) {
     window.location.href = `/patient/mission/${missionId}/details`;
 }
 
-// Initialize emergency button when page loads
+// Initialize emergency buttons when page loads
 document.addEventListener('DOMContentLoaded', function() {
     const emergencyBtn = document.getElementById('emergencyBtn');
+    const emergencyCardBtn = document.getElementById('emergencyCardBtn');
+    
+    function handleEmergencyClick() {
+        if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
+            showEmergencyModal();
+        }
+    }
+    
     if (emergencyBtn) {
-        emergencyBtn.addEventListener('click', function() {
-            if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
-                showEmergencyModal();
-            }
-        });
+        emergencyBtn.addEventListener('click', handleEmergencyClick);
+    }
+    
+    if (emergencyCardBtn) {
+        emergencyCardBtn.addEventListener('click', handleEmergencyClick);
     }
 });
 </script>

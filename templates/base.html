@@ -80,6 +80,10 @@
         // Apply saved theme on page load
         function applyTheme(theme) {
             html.setAttribute('data-theme', theme);
+        }
+        
+        // Update theme toggle UI if it exists
+        function updateThemeToggleUI(theme) {
             const themeToggle = document.getElementById('themeToggle');
             const themeIcon = document.getElementById('themeIcon');
             
@@ -97,8 +101,13 @@
         // Initialize theme
         applyTheme(savedTheme);
         
-        // Theme toggle functionality - will work when button exists
+        // Update UI after DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
+            updateThemeToggleUI(savedTheme);
+        });
+        
+        // Theme toggle functionality - will work when button exists
+        function initializeThemeToggle() {
             const themeToggle = document.getElementById('themeToggle');
             if (themeToggle) {
                 themeToggle.addEventListener('click', function() {
@@ -106,6 +115,7 @@
                     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
                     
                     applyTheme(newTheme);
+                    updateThemeToggleUI(newTheme);
                     localStorage.setItem('sierrawings-theme', newTheme);
                     
                     // Add smooth transition effect
@@ -115,7 +125,14 @@
                     }, 300);
                 });
             }
-        });
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeThemeToggle);
+        } else {
+            initializeThemeToggle();
+        }
     </script>
     
     {% block extra_js %}{% endblock %}
