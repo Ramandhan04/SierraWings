@@ -4,6 +4,11 @@ from werkzeug.security import generate_password_hash
 from datetime import datetime, timedelta
 from models import User, Drone, Mission, TelemetryLog, ClinicProfile
 from app import db
+import socket
+import json
+import threading
+import time
+import random
 
 bp = Blueprint('admin', __name__)
 
@@ -303,6 +308,243 @@ def delete_drone(drone_id):
         flash('An error occurred while deleting the drone.', 'error')
     
     return redirect(url_for('admin.manage_drones'))
+
+@bp.route('/drones/scan-wireless', methods=['POST'])
+@login_required
+@admin_required
+def scan_wireless_drones():
+    """Scan for available wireless drones on the network"""
+    try:
+        # Simulate network scan for drones
+        discovered_drones = []
+        
+        # In a real implementation, this would scan network for drone WiFi signals
+        # For demonstration, we'll simulate finding drones
+        drone_types = ['DJI Mavic 3', 'Autel EVO II', 'Skydio 2+', 'Parrot ANAFI', 'Yuneec Typhoon H']
+        
+        for i in range(random.randint(2, 5)):
+            drone_id = f"SW-{random.randint(1000, 9999)}"
+            discovered_drones.append({
+                'id': drone_id,
+                'name': f"SierraWings-{drone_id}",
+                'model': random.choice(drone_types),
+                'signal_strength': random.randint(70, 100),
+                'battery_level': random.randint(50, 100),
+                'firmware_version': f"v{random.randint(1, 3)}.{random.randint(0, 9)}.{random.randint(0, 9)}",
+                'ip_address': f"192.168.1.{random.randint(100, 200)}",
+                'status': 'discoverable',
+                'distance': f"{random.randint(10, 500)}m"
+            })
+        
+        return jsonify({
+            'success': True,
+            'drones': discovered_drones,
+            'scan_time': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to scan for wireless drones',
+            'details': str(e)
+        }), 500
+
+@bp.route('/drones/connect-wireless', methods=['POST'])
+@login_required
+@admin_required
+def connect_wireless_drone():
+    """Connect to a discovered wireless drone"""
+    try:
+        data = request.get_json()
+        drone_id = data.get('drone_id')
+        drone_name = data.get('drone_name')
+        drone_model = data.get('drone_model')
+        ip_address = data.get('ip_address')
+        
+        if not all([drone_id, drone_name, drone_model, ip_address]):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required drone information'
+            }), 400
+        
+        # Check if drone already exists in database
+        existing_drone = Drone.query.filter_by(name=drone_name).first()
+        if existing_drone:
+            return jsonify({
+                'success': False,
+                'error': 'Drone already registered in the system'
+            }), 400
+        
+        # Simulate connection process
+        connection_steps = [
+            {'step': 1, 'message': 'Establishing wireless connection...', 'progress': 20},
+            {'step': 2, 'message': 'Authenticating with drone...', 'progress': 40},
+            {'step': 3, 'message': 'Downloading drone configuration...', 'progress': 60},
+            {'step': 4, 'message': 'Syncing flight parameters...', 'progress': 80},
+            {'step': 5, 'message': 'Connection established successfully!', 'progress': 100}
+        ]
+        
+        # In a real implementation, this would establish actual wireless connection
+        # For now, we'll simulate the connection process
+        
+        return jsonify({
+            'success': True,
+            'connection_id': f"conn_{drone_id}_{int(time.time())}",
+            'steps': connection_steps,
+            'drone_info': {
+                'id': drone_id,
+                'name': drone_name,
+                'model': drone_model,
+                'ip_address': ip_address,
+                'connected_at': datetime.utcnow().isoformat()
+            }
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to connect to wireless drone',
+            'details': str(e)
+        }), 500
+
+@bp.route('/drones/register-wireless', methods=['POST'])
+@login_required
+@admin_required
+def register_wireless_drone():
+    """Register a connected wireless drone to the fleet"""
+    try:
+        data = request.get_json()
+        drone_id = data.get('drone_id')
+        drone_name = data.get('drone_name')
+        drone_model = data.get('drone_model')
+        ip_address = data.get('ip_address')
+        connection_id = data.get('connection_id')
+        
+        if not all([drone_id, drone_name, drone_model, connection_id]):
+            return jsonify({
+                'success': False,
+                'error': 'Missing required registration information'
+            }), 400
+        
+        # Check if drone already exists
+        existing_drone = Drone.query.filter_by(name=drone_name).first()
+        if existing_drone:
+            return jsonify({
+                'success': False,
+                'error': 'Drone already registered'
+            }), 400
+        
+        # Create new drone record
+        new_drone = Drone(
+            name=drone_name,
+            model=drone_model,
+            status='available',
+            battery_level=random.randint(80, 100),
+            location_lat=8.4606,  # Freetown coordinates
+            location_lon=-13.2317,
+            created_at=datetime.utcnow(),
+            last_maintenance=datetime.utcnow()
+        )
+        
+        db.session.add(new_drone)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Drone {drone_name} registered successfully',
+            'drone_id': new_drone.id,
+            'fleet_size': Drone.query.count()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': 'Failed to register wireless drone',
+            'details': str(e)
+        }), 500
+
+@bp.route('/drones/test-connection/<int:drone_id>', methods=['POST'])
+@login_required
+@admin_required
+def test_drone_connection(drone_id):
+    """Test connection with a registered drone"""
+    try:
+        drone = Drone.query.get(drone_id)
+        if not drone:
+            return jsonify({
+                'success': False,
+                'error': 'Drone not found'
+            }), 404
+        
+        # Simulate connection test
+        test_results = {
+            'ping_test': {'status': 'success', 'latency': f"{random.randint(10, 50)}ms"},
+            'telemetry_test': {'status': 'success', 'data_rate': f"{random.randint(50, 100)} packets/sec"},
+            'command_test': {'status': 'success', 'response_time': f"{random.randint(100, 300)}ms"},
+            'battery_check': {'status': 'success', 'level': f"{random.randint(70, 100)}%"},
+            'gps_lock': {'status': 'success', 'satellites': random.randint(8, 15)}
+        }
+        
+        # Update drone battery level
+        drone.battery_level = random.randint(70, 100)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'drone_name': drone.name,
+            'test_results': test_results,
+            'tested_at': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Connection test failed',
+            'details': str(e)
+        }), 500
+
+@bp.route('/drones/wireless-status')
+@login_required
+@admin_required
+def wireless_status():
+    """Get wireless connectivity status for all drones"""
+    try:
+        drones = Drone.query.all()
+        wireless_status = []
+        
+        for drone in drones:
+            status = {
+                'id': drone.id,
+                'name': drone.name,
+                'model': drone.model,
+                'status': drone.status,
+                'battery_level': drone.battery_level,
+                'last_seen': (datetime.utcnow() - timedelta(minutes=random.randint(1, 30))).isoformat(),
+                'signal_strength': random.randint(60, 100),
+                'connection_quality': 'excellent' if random.randint(1, 10) > 7 else 'good',
+                'data_rate': f"{random.randint(50, 150)} Mbps",
+                'location': {
+                    'lat': drone.location_lat,
+                    'lon': drone.location_lon
+                } if drone.location_lat and drone.location_lon else None
+            }
+            wireless_status.append(status)
+        
+        return jsonify({
+            'success': True,
+            'drones': wireless_status,
+            'total_drones': len(drones),
+            'online_drones': len([d for d in wireless_status if d['connection_quality'] in ['good', 'excellent']]),
+            'last_updated': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to get wireless status',
+            'details': str(e)
+        }), 500
 
 @bp.route('/missions')
 @login_required

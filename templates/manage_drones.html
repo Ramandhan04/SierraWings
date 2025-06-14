@@ -15,9 +15,17 @@
                     </h1>
                     <p class="text-muted mb-0">Monitor and manage your drone fleet</p>
                 </div>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createDroneModal">
-                    <i class="fas fa-plus me-2"></i>Add Drone
-                </button>
+                <div class="btn-group">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createDroneModal">
+                        <i class="fas fa-plus me-2"></i>Add Drone
+                    </button>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#wirelessDroneModal">
+                        <i class="fas fa-wifi me-2"></i>Connect Wireless
+                    </button>
+                    <button class="btn btn-info" onclick="checkWirelessStatus()">
+                        <i class="fas fa-signal me-2"></i>Network Status
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -154,6 +162,9 @@
                                     <div class="btn-group" role="group">
                                         <button class="btn btn-sm btn-outline-info" onclick="viewDroneDetails({{ drone.id }})">
                                             <i class="fas fa-eye"></i> Details
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-success" onclick="testDroneConnection({{ drone.id }})">
+                                            <i class="fas fa-wifi"></i> Test
                                         </button>
                                         {% if drone.status != 'in_flight' %}
                                             <form method="POST" action="{{ url_for('admin.delete_drone', drone_id=drone.id) }}" class="d-inline">
@@ -334,6 +345,441 @@ function getStatusColor(status) {
     };
     return colors[status] || 'secondary';
 }
+
+// Wireless drone connection functionality
+let currentConnectionId = null;
+let selectedDroneInfo = null;
+
+function scanForDrones() {
+    const scanIcon = document.getElementById('scanIcon');
+    const scanPhase = document.getElementById('scanPhase');
+    const discoveredPhase = document.getElementById('discoveredDronesPhase');
+    
+    // Show scanning animation
+    scanIcon.classList.add('fa-spin');
+    
+    fetch('{{ url_for("admin.scan_wireless_drones") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        scanIcon.classList.remove('fa-spin');
+        
+        if (data.success) {
+            displayDiscoveredDrones(data.drones);
+            scanPhase.style.display = 'none';
+            discoveredPhase.style.display = 'block';
+        } else {
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification('Scan failed: ' + data.error, 'error');
+            }
+        }
+    })
+    .catch(error => {
+        scanIcon.classList.remove('fa-spin');
+        if (window.showSierraWingsNotification) {
+            showSierraWingsNotification('Network error during scan', 'error');
+        }
+    });
+}
+
+function displayDiscoveredDrones(drones) {
+    const dronesList = document.getElementById('discoveredDronesList');
+    dronesList.innerHTML = '';
+    
+    if (drones.length === 0) {
+        dronesList.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                <p class="text-muted">No drones discovered</p>
+                <small>Ensure drones are powered on and in discovery mode</small>
+            </div>
+        `;
+        return;
+    }
+    
+    drones.forEach(drone => {
+        const droneItem = document.createElement('div');
+        droneItem.className = 'list-group-item list-group-item-action';
+        droneItem.innerHTML = `
+            <div class="d-flex w-100 justify-content-between">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-helicopter text-success me-2"></i>
+                        <h6 class="mb-0">${drone.name}</h6>
+                        <span class="badge bg-success ms-2">${drone.signal_strength}% Signal</span>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small class="text-muted">Model: ${drone.model}</small><br>
+                            <small class="text-muted">Battery: ${drone.battery_level}%</small>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">IP: ${drone.ip_address}</small><br>
+                            <small class="text-muted">Distance: ${drone.distance}</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-primary btn-sm" onclick="connectToDrone('${drone.id}', '${drone.name}', '${drone.model}', '${drone.ip_address}')">
+                        <i class="fas fa-link me-1"></i>Connect
+                    </button>
+                </div>
+            </div>
+        `;
+        dronesList.appendChild(droneItem);
+    });
+}
+
+function connectToDrone(droneId, droneName, droneModel, ipAddress) {
+    const discoveredPhase = document.getElementById('discoveredDronesPhase');
+    const connectionPhase = document.getElementById('connectionPhase');
+    const progressBar = document.querySelector('#connectionProgress .progress-bar');
+    const stepsDiv = document.getElementById('connectionSteps');
+    
+    discoveredPhase.style.display = 'none';
+    connectionPhase.style.display = 'block';
+    
+    selectedDroneInfo = { droneId, droneName, droneModel, ipAddress };
+    
+    fetch('{{ url_for("admin.connect_wireless_drone") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            drone_id: droneId,
+            drone_name: droneName,
+            drone_model: droneModel,
+            ip_address: ipAddress
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentConnectionId = data.connection_id;
+            simulateConnectionProgress(data.steps);
+        } else {
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification('Connection failed: ' + data.error, 'error');
+            }
+            resetConnectionModal();
+        }
+    })
+    .catch(error => {
+        if (window.showSierraWingsNotification) {
+            showSierraWingsNotification('Network error during connection', 'error');
+        }
+        resetConnectionModal();
+    });
+}
+
+function simulateConnectionProgress(steps) {
+    const progressBar = document.querySelector('#connectionProgress .progress-bar');
+    const stepsDiv = document.getElementById('connectionSteps');
+    let currentStep = 0;
+    
+    function processNextStep() {
+        if (currentStep < steps.length) {
+            const step = steps[currentStep];
+            progressBar.style.width = step.progress + '%';
+            
+            stepsDiv.innerHTML += `
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-check text-success me-2"></i>
+                    <span>${step.message}</span>
+                </div>
+            `;
+            
+            currentStep++;
+            setTimeout(processNextStep, 1000);
+        } else {
+            showRegistrationPhase();
+        }
+    }
+    
+    processNextStep();
+}
+
+function showRegistrationPhase() {
+    const connectionPhase = document.getElementById('connectionPhase');
+    const registrationPhase = document.getElementById('registrationPhase');
+    const registerBtn = document.getElementById('registerDroneBtn');
+    const infoDiv = document.getElementById('droneRegistrationInfo');
+    
+    connectionPhase.style.display = 'none';
+    registrationPhase.style.display = 'block';
+    registerBtn.style.display = 'inline-block';
+    
+    infoDiv.innerHTML = `
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title">
+                    <i class="fas fa-helicopter me-2"></i>${selectedDroneInfo.droneName}
+                </h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Model:</strong> ${selectedDroneInfo.droneModel}</p>
+                        <p class="mb-1"><strong>ID:</strong> ${selectedDroneInfo.droneId}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>IP Address:</strong> ${selectedDroneInfo.ipAddress}</p>
+                        <p class="mb-1"><strong>Status:</strong> <span class="badge bg-success">Connected</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function registerConnectedDrone() {
+    if (!currentConnectionId || !selectedDroneInfo) {
+        if (window.showSierraWingsNotification) {
+            showSierraWingsNotification('No active connection to register', 'error');
+        }
+        return;
+    }
+    
+    fetch('{{ url_for("admin.register_wireless_drone") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            drone_id: selectedDroneInfo.droneId,
+            drone_name: selectedDroneInfo.droneName,
+            drone_model: selectedDroneInfo.droneModel,
+            ip_address: selectedDroneInfo.ipAddress,
+            connection_id: currentConnectionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification(data.message, 'success');
+            }
+            // Close modal and refresh page
+            const modal = bootstrap.Modal.getInstance(document.getElementById('wirelessDroneModal'));
+            modal.hide();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification('Registration failed: ' + data.error, 'error');
+            }
+        }
+    })
+    .catch(error => {
+        if (window.showSierraWingsNotification) {
+            showSierraWingsNotification('Network error during registration', 'error');
+        }
+    });
+}
+
+function resetConnectionModal() {
+    document.getElementById('scanPhase').style.display = 'block';
+    document.getElementById('discoveredDronesPhase').style.display = 'none';
+    document.getElementById('connectionPhase').style.display = 'none';
+    document.getElementById('registrationPhase').style.display = 'none';
+    document.getElementById('registerDroneBtn').style.display = 'none';
+    
+    currentConnectionId = null;
+    selectedDroneInfo = null;
+}
+
+function checkWirelessStatus() {
+    const modal = new bootstrap.Modal(document.getElementById('networkStatusModal'));
+    modal.show();
+    
+    fetch('{{ url_for("admin.wireless_status") }}')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayNetworkStatus(data);
+        } else {
+            document.getElementById('networkStatusContent').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Failed to load network status: ${data.error}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        document.getElementById('networkStatusContent').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Network error occurred while checking status
+            </div>
+        `;
+    });
+}
+
+function displayNetworkStatus(data) {
+    const content = document.getElementById('networkStatusContent');
+    
+    let statusHtml = `
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="stat-card bg-primary">
+                    <div class="stat-content text-center">
+                        <h3>${data.total_drones}</h3>
+                        <p>Total Drones</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card bg-success">
+                    <div class="stat-content text-center">
+                        <h3>${data.online_drones}</h3>
+                        <p>Online</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card bg-warning">
+                    <div class="stat-content text-center">
+                        <h3>${data.total_drones - data.online_drones}</h3>
+                        <p>Offline</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Drone</th>
+                        <th>Status</th>
+                        <th>Signal</th>
+                        <th>Battery</th>
+                        <th>Data Rate</th>
+                        <th>Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    data.drones.forEach(drone => {
+        const signalColor = drone.signal_strength > 80 ? 'success' : 
+                           drone.signal_strength > 60 ? 'warning' : 'danger';
+        const statusColor = drone.connection_quality === 'excellent' ? 'success' : 
+                           drone.connection_quality === 'good' ? 'warning' : 'danger';
+        
+        statusHtml += `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-helicopter text-${getStatusColor(drone.status)} me-2"></i>
+                        <div>
+                            <strong>${drone.name}</strong>
+                            <br><small class="text-muted">${drone.model}</small>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge bg-${statusColor}">${drone.connection_quality}</span>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress me-2" style="width: 60px; height: 8px;">
+                            <div class="progress-bar bg-${signalColor}" style="width: ${drone.signal_strength}%"></div>
+                        </div>
+                        <small>${drone.signal_strength}%</small>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress me-2" style="width: 60px; height: 8px;">
+                            <div class="progress-bar bg-success" style="width: ${drone.battery_level}%"></div>
+                        </div>
+                        <small>${drone.battery_level}%</small>
+                    </div>
+                </td>
+                <td><small>${drone.data_rate}</small></td>
+                <td><small>${new Date(drone.last_seen).toLocaleString()}</small></td>
+            </tr>
+        `;
+    });
+    
+    statusHtml += `
+                </tbody>
+            </table>
+        </div>
+        <div class="text-end">
+            <small class="text-muted">Last updated: ${new Date(data.last_updated).toLocaleString()}</small>
+        </div>
+    `;
+    
+    content.innerHTML = statusHtml;
+}
+
+function testDroneConnection(droneId) {
+    fetch(`{{ url_for("admin.test_drone_connection", drone_id=0) }}`.replace('0', droneId), {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayConnectionTestResults(data);
+        } else {
+            if (window.showSierraWingsNotification) {
+                showSierraWingsNotification('Connection test failed: ' + data.error, 'error');
+            }
+        }
+    })
+    .catch(error => {
+        if (window.showSierraWingsNotification) {
+            showSierraWingsNotification('Network error during connection test', 'error');
+        }
+    });
+}
+
+function displayConnectionTestResults(data) {
+    const modal = new bootstrap.Modal(document.getElementById('connectionTestModal'));
+    const content = document.getElementById('testResultsContent');
+    
+    let resultsHtml = `
+        <div class="alert alert-success">
+            <h6><i class="fas fa-wifi me-2"></i>Connection Test - ${data.drone_name}</h6>
+            <small>Tested at: ${new Date(data.tested_at).toLocaleString()}</small>
+        </div>
+        
+        <div class="list-group">
+    `;
+    
+    Object.entries(data.test_results).forEach(([test, result]) => {
+        const icon = result.status === 'success' ? 'fa-check text-success' : 'fa-times text-danger';
+        const testName = test.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        
+        resultsHtml += `
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas ${icon} me-2"></i>
+                    <strong>${testName}</strong>
+                </div>
+                <div class="text-end">
+                    ${Object.entries(result).filter(([k,v]) => k !== 'status').map(([k,v]) => 
+                        `<small class="text-muted">${v}</small>`
+                    ).join('<br>')}
+                </div>
+            </div>
+        `;
+    });
+    
+    resultsHtml += '</div>';
+    content.innerHTML = resultsHtml;
+    modal.show();
+}
+
+// Reset modal when closed
+document.getElementById('wirelessDroneModal').addEventListener('hidden.bs.modal', function () {
+    resetConnectionModal();
+});
 
 // Form validation
 (function() {
