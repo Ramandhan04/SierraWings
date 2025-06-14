@@ -266,10 +266,17 @@ def create_drone():
             flash('Drone with this name already exists.', 'error')
             return redirect(url_for('admin.manage_drones'))
         
+        # Get live GPS coordinates if provided
+        live_lat = request.form.get('live_lat')
+        live_lon = request.form.get('live_lon')
+        
         drone = Drone(
             name=name,
             model=model,
-            status='available'
+            status='available',
+            battery_level=100,
+            location_lat=float(live_lat) if live_lat else None,
+            location_lon=float(live_lon) if live_lon else None
         )
         
         db.session.add(drone)

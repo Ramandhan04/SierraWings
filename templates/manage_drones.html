@@ -163,10 +163,10 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <button class="btn btn-sm btn-outline-info" onclick="viewDroneDetails({{ drone.id }})">
+                                        <button class="btn btn-sm btn-outline-info" onclick="showDroneDetails('{{ drone.name }}')">
                                             <i class="fas fa-eye"></i> Details
                                         </button>
-                                        <button class="btn btn-sm btn-outline-success" onclick="testDroneConnection({{ drone.id }})">
+                                        <button class="btn btn-sm btn-outline-success" onclick="testDroneConnection('{{ drone.name }}')">
                                             <i class="fas fa-wifi"></i> Test
                                         </button>
                                         {% if drone.status != 'in_flight' %}
@@ -229,9 +229,34 @@
                         <div class="invalid-feedback">Please select a model.</div>
                     </div>
                     
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-map-marker-alt me-2"></i>Live GPS Location Access
+                        </label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="live_lat" class="form-label text-muted">Latitude</label>
+                                <input type="number" class="form-control" id="live_lat" name="live_lat" 
+                                       step="0.000001" placeholder="8.460555" 
+                                       title="Current live GPS latitude from Pixhawk">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="live_lon" class="form-label text-muted">Longitude</label>
+                                <input type="number" class="form-control" id="live_lon" name="live_lon" 
+                                       step="0.000001" placeholder="-11.779889" 
+                                       title="Current live GPS longitude from Pixhawk">
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-satellite me-1"></i>Enter live GPS coordinates from the drone's Pixhawk flight controller. 
+                            Leave blank to auto-detect during first connection.
+                        </small>
+                    </div>
+                    
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        New drones will be added with "available" status and 100% battery level.
+                        New drones will be added with "available" status and 100% battery level. 
+                        GPS coordinates will be updated automatically from live Pixhawk telemetry.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1077,24 +1102,85 @@ window.displayNetworkStatus = function(data) {
     `;
 }
 
-window.testDroneConnection = function(droneId) {
-    fetch(`{{ url_for("admin.test_drone_connection", drone_id=0) }}`.replace('0', droneId), {
-        method: 'POST'
-    })
+window.testDroneConnection = function(droneName) {
+    const modal = new bootstrap.Modal(document.getElementById('connectionTestModal'));
+    const content = document.getElementById('testResultsContent');
+    
+    content.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Testing connection to ${droneName}...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    fetch(`/admin/drones/test/${droneName}`)
     .then(response => response.json())
     .then(data => {
+        let resultsHtml = `<h6>Connection Test for ${droneName}</h6>`;
+        
         if (data.success) {
-            displayConnectionTestResults(data);
-        } else {
-            if (window.showSierraWingsNotification) {
-                showSierraWingsNotification('Connection test failed: ' + data.error, 'error');
+            resultsHtml += `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>Connection successful!
+                </div>
+            `;
+            
+            if (data.test_results) {
+                resultsHtml += '<h6>Test Results:</h6><ul class="list-group">';
+                Object.entries(data.test_results).forEach(([test, result]) => {
+                    const status = result.status === 'success' ? 'success' : 'danger';
+                    const icon = result.status === 'success' ? 'check' : 'times';
+                    resultsHtml += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            ${test}: ${result.message || result.status}
+                            <span class="badge bg-${status}">
+                                <i class="fas fa-${icon}"></i>
+                            </span>
+                        </li>
+                    `;
+                });
+                resultsHtml += '</ul>';
             }
+            
+            if (data.telemetry) {
+                resultsHtml += `
+                    <h6 class="mt-3">Live Pixhawk Telemetry:</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small><strong>Battery:</strong> ${data.telemetry.battery || 'N/A'}%</small><br>
+                            <small><strong>GPS Status:</strong> ${data.telemetry.gps_status || 'No Fix'}</small><br>
+                            <small><strong>Satellites:</strong> ${data.telemetry.satellites || 0}</small><br>
+                            <small><strong>Armed:</strong> ${data.telemetry.armed ? 'Yes' : 'No'}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <small><strong>Flight Mode:</strong> ${data.telemetry.flight_mode || 'Unknown'}</small><br>
+                            <small><strong>Altitude:</strong> ${data.telemetry.altitude || 'N/A'} m</small><br>
+                            <small><strong>GPS Position:</strong> ${data.telemetry.lat && data.telemetry.lon ? data.telemetry.lat.toFixed(6) + ', ' + data.telemetry.lon.toFixed(6) : 'No GPS'}</small><br>
+                            <small><strong>Signal:</strong> ${data.telemetry.signal_strength || 'N/A'}%</small>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            resultsHtml += `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Connection failed: ${data.error}
+                </div>
+            `;
         }
+        
+        content.innerHTML = resultsHtml;
     })
     .catch(error => {
-        if (window.showSierraWingsNotification) {
-            showSierraWingsNotification('Network error during connection test', 'error');
-        }
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>Error testing connection: ${error.message}
+            </div>
+        `;
     });
 }
 
@@ -1133,6 +1219,106 @@ window.displayConnectionTestResults = function(data) {
     resultsHtml += '</div>';
     content.innerHTML = resultsHtml;
     modal.show();
+}
+
+window.showDroneDetails = function(droneName) {
+    const modal = new bootstrap.Modal(document.getElementById('droneDetailsModal'));
+    const content = document.getElementById('droneDetailsContent');
+    
+    content.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading drone details...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    fetch(`/admin/drones/details/${droneName}`)
+    .then(response => response.json())
+    .then(data => {
+        let resultsHtml = `<h6>Drone Details: ${droneName}</h6>`;
+        
+        if (data.success) {
+            const droneInfo = data.details.drone_info;
+            const telemetry = data.details.live_telemetry;
+            const connectionStatus = data.details.connection_status;
+            
+            resultsHtml += `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Basic Information</h6>
+                        <p><strong>Name:</strong> ${droneInfo.name}</p>
+                        <p><strong>Model:</strong> ${droneInfo.model}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-${droneInfo.status === 'available' ? 'success' : 'warning'}">${droneInfo.status}</span></p>
+                        <p><strong>Battery:</strong> ${droneInfo.battery_level}%</p>
+                        <p><strong>Connection:</strong> <span class="badge bg-${connectionStatus === 'connected' ? 'success' : 'danger'}">${connectionStatus}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>GPS Location</h6>
+                        ${droneInfo.location ? 
+                            `<p><strong>Latitude:</strong> ${droneInfo.location.lat.toFixed(6)}</p>
+                             <p><strong>Longitude:</strong> ${droneInfo.location.lon.toFixed(6)}</p>` : 
+                            '<p class="text-muted">No location data available</p>'
+                        }
+                        <p><strong>Created:</strong> ${new Date(droneInfo.created_at).toLocaleString()}</p>
+                        ${droneInfo.last_maintenance ? 
+                            `<p><strong>Last Maintenance:</strong> ${new Date(droneInfo.last_maintenance).toLocaleString()}</p>` : 
+                            '<p><strong>Last Maintenance:</strong> Never</p>'
+                        }
+                    </div>
+                </div>
+            `;
+            
+            if (telemetry) {
+                resultsHtml += `
+                    <hr>
+                    <h6>Live Pixhawk Telemetry</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <small><strong>Battery:</strong> ${telemetry.battery ? telemetry.battery.remaining : 'N/A'}%</small><br>
+                            <small><strong>GPS Status:</strong> ${telemetry.gps ? telemetry.gps.fix_type : 'No GPS'}</small><br>
+                            <small><strong>Satellites:</strong> ${telemetry.gps ? telemetry.gps.satellites_visible : 0}</small><br>
+                            <small><strong>Armed:</strong> ${telemetry.armed ? 'Yes' : 'No'}</small>
+                        </div>
+                        <div class="col-md-6">
+                            <small><strong>Flight Mode:</strong> ${telemetry.flight_mode || 'Unknown'}</small><br>
+                            <small><strong>Altitude:</strong> ${telemetry.position ? telemetry.position.alt.toFixed(1) : 'N/A'} m</small><br>
+                            <small><strong>GPS Position:</strong> ${telemetry.position ? telemetry.position.lat.toFixed(6) + ', ' + telemetry.position.lon.toFixed(6) : 'No GPS'}</small><br>
+                            <small><strong>Signal:</strong> ${telemetry.signal_strength || 'N/A'}%</small>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <small><strong>Last Update:</strong> ${telemetry.timestamp ? new Date(telemetry.timestamp).toLocaleString() : 'Never'}</small>
+                    </div>
+                `;
+            } else {
+                resultsHtml += `
+                    <hr>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>No live telemetry available - drone may be offline
+                    </div>
+                `;
+            }
+        } else {
+            resultsHtml += `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Error: ${data.error}
+                </div>
+            `;
+        }
+        
+        content.innerHTML = resultsHtml;
+    })
+    .catch(error => {
+        content.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>Error loading details: ${error.message}
+            </div>
+        `;
+    });
 }
 
 // Reset modal when closed
