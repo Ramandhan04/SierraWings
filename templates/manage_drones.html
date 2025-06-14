@@ -213,45 +213,72 @@
                     <div class="mb-3">
                         <label for="droneName" class="form-label">Drone Name</label>
                         <input type="text" class="form-control" id="droneName" name="name" required 
-                               placeholder="e.g., Sierra-Wings-01">
+                               placeholder="e.g., SW-001">
                         <div class="invalid-feedback">Drone name is required.</div>
                     </div>
                     
                     <div class="mb-3">
                         <label for="droneModel" class="form-label">Model</label>
-                        <input type="text" class="form-control" id="droneModel" name="model" required 
-                               placeholder="e.g., Custom Pixhawk, ArduCopter">
-                        <div class="invalid-feedback">Drone model is required.</div>
+                        <select class="form-select" id="droneModel" name="model" required>
+                            <option value="">Select model type</option>
+                            <option value="Emergency">Emergency</option>
+                            <option value="Medical">Medical</option>
+                            <option value="Standard">Standard</option>
+                            <option value="Heavy Lift">Heavy Lift</option>
+                        </select>
+                        <div class="invalid-feedback">Please select a model type.</div>
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">
-                            <i class="fas fa-map-marker-alt me-2"></i>Live GPS Location Access
-                        </label>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label for="live_lat" class="form-label text-muted">Latitude</label>
-                                <input type="number" class="form-control" id="live_lat" name="live_lat" 
-                                       step="0.000001" placeholder="8.460555" 
-                                       title="Current live GPS latitude from Pixhawk">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-wifi me-2"></i>Live Hardware Connection
+                                </h6>
                             </div>
-                            <div class="col-md-6">
-                                <label for="live_lon" class="form-label text-muted">Longitude</label>
-                                <input type="number" class="form-control" id="live_lon" name="live_lon" 
-                                       step="0.000001" placeholder="-11.779889" 
-                                       title="Current live GPS longitude from Pixhawk">
+                            <div class="card-body">
+                                <p class="text-muted mb-3">
+                                    Connect directly to your drone's Pixhawk flight controller and Raspberry Pi for live telemetry and GPS data.
+                                </p>
+                                
+                                <div id="connectionStatus" class="d-none mb-3">
+                                    <div class="alert alert-info">
+                                        <div class="d-flex align-items-center">
+                                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                            <span id="connectionMessage">Connecting to live hardware...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="liveDataDisplay" class="d-none mb-3">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>GPS Location:</strong>
+                                            <div id="liveGPS" class="text-muted">--</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Battery Level:</strong>
+                                            <div id="liveBattery" class="text-muted">--</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button type="button" class="btn btn-primary" onclick="connectWirelessly()">
+                                    <i class="fas fa-satellite-dish me-2"></i>Connect Wirelessly
+                                </button>
+                                
+                                <!-- Hidden fields for live data -->
+                                <input type="hidden" id="live_lat" name="live_lat">
+                                <input type="hidden" id="live_lon" name="live_lon">
+                                <input type="hidden" id="wireless_connected" name="wireless_connected" value="false">
+                                <input type="hidden" id="drone_id" name="drone_id">
                             </div>
                         </div>
-                        <small class="form-text text-muted">
-                            <i class="fas fa-satellite me-1"></i>Enter live GPS coordinates from the drone's Pixhawk flight controller. 
-                            Leave blank to auto-detect during first connection.
-                        </small>
                     </div>
                     
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
-                        New drones will be added with "available" status and 100% battery level. 
-                        GPS coordinates will be updated automatically from live Pixhawk telemetry.
+                        New drones will be added with "available" status. Use "Connect Wirelessly" to establish live connection with Pixhawk flight controller and Raspberry Pi for real-time GPS and telemetry data.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1693,6 +1720,104 @@ window.checkWirelessStatus = function() {
         `;
     });
 }
+
+// Connect wirelessly function for the Add Drone modal
+window.connectWirelessly = function() {
+    const connectionStatus = document.getElementById('connectionStatus');
+    const liveDataDisplay = document.getElementById('liveDataDisplay');
+    const connectionMessage = document.getElementById('connectionMessage');
+    
+    // Show connection status
+    connectionStatus.classList.remove('d-none');
+    connectionMessage.textContent = 'Scanning for live Pixhawk and Raspberry Pi devices...';
+    
+    // Scan for available drones
+    fetch('/admin/scan-wireless-drones', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.drones.length > 0) {
+            // Found drones, try to connect to the first available one
+            const drone = data.drones[0];
+            connectionMessage.textContent = `Found ${drone.name}, establishing connection...`;
+            
+            // Attempt connection
+            return fetch(`/admin/drones/connect/${drone.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ip_address: drone.ip_address,
+                    type: 'wireless'
+                })
+            });
+        } else {
+            throw new Error('No live drones found on network');
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            connectionMessage.textContent = 'Connected! Getting live telemetry data...';
+            
+            // Get live telemetry
+            return fetch(`/admin/drones/telemetry/${data.drone_id}`);
+        } else {
+            throw new Error(data.error || 'Connection failed');
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.telemetry) {
+            const telemetry = data.telemetry;
+            
+            // Update connection status
+            connectionStatus.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Successfully connected to live Pixhawk and Raspberry Pi!
+                </div>
+            `;
+            
+            // Show live data
+            if (telemetry.position) {
+                document.getElementById('liveGPS').textContent = 
+                    `${telemetry.position.lat.toFixed(6)}, ${telemetry.position.lon.toFixed(6)}`;
+                document.getElementById('live_lat').value = telemetry.position.lat;
+                document.getElementById('live_lon').value = telemetry.position.lon;
+            }
+            
+            if (telemetry.battery) {
+                document.getElementById('liveBattery').textContent = `${telemetry.battery.remaining}%`;
+            }
+            
+            // Mark as wirelessly connected
+            document.getElementById('wireless_connected').value = 'true';
+            document.getElementById('drone_id').value = data.drone_id;
+            
+            liveDataDisplay.classList.remove('d-none');
+            
+        } else {
+            throw new Error('No telemetry data available');
+        }
+    })
+    .catch(error => {
+        connectionStatus.innerHTML = `
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Connection failed: ${error.message}
+                <br><small>Make sure Pixhawk is powered and Raspberry Pi is running the drone service.</small>
+            </div>
+        `;
+    });
+}
+
+function scanForDrones() {
     const scanPhase = document.getElementById('scanPhase');
     const discoveredPhase = document.getElementById('discoveredDronesPhase');
     
