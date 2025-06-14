@@ -50,18 +50,8 @@
                             </div>
                         </div>
                         
-                        <!-- Invite Code Field (hidden by default) -->
-                        <div class="mb-3" id="inviteCodeField" style="display: none;">
-                            <label for="invite_code" class="form-label">Invite Code <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="invite_code" name="invite_code" 
-                                   placeholder="Enter invitation code">
-                            <div class="form-text">
-                                <small class="text-warning">
-                                    <i class="fas fa-lock me-1"></i>
-                                    <span id="inviteCodeHelpText">Contact administration for access code</span>
-                                </small>
-                            </div>
-                        </div>
+                        <!-- Hidden invite code field -->
+                        <input type="hidden" id="invite_code" name="invite_code" value="">
                         
                         <!-- Basic Information -->
                         <div class="row">
@@ -149,12 +139,18 @@
                         <!-- Clinic Notice -->
                         <div id="clinicNotice" class="alert alert-info" style="display: none;">
                             <h6><i class="fas fa-info-circle me-2"></i>Medical Facility Registration</h6>
-                            <p class="mb-2">After creating your account, you'll be redirected to complete your clinic profile with:</p>
+                            <p class="mb-2">You will be prompted for an invitation code during registration. After creating your account, you'll complete your clinic profile with:</p>
                             <ul class="mb-0">
                                 <li>Medical license verification</li>
                                 <li>Facility location and specialties</li>
                                 <li>Operating hours and emergency contact</li>
                             </ul>
+                        </div>
+                        
+                        <!-- Admin Notice -->
+                        <div id="adminNotice" class="alert alert-warning" style="display: none;">
+                            <h6><i class="fas fa-shield-alt me-2"></i>Administrator Registration</h6>
+                            <p class="mb-0">Administrator access is restricted. You will be prompted for a special invitation code during registration. Contact the system administrator for access credentials.</p>
                         </div>
                         
                         <div class="mb-4">
@@ -188,9 +184,7 @@ function toggleRoleFields() {
     
     const patientSection = document.getElementById('patientLocationSection');
     const clinicNotice = document.getElementById('clinicNotice');
-    const inviteCodeField = document.getElementById('inviteCodeField');
-    const inviteCodeInput = document.getElementById('invite_code');
-    const inviteCodeHelpText = document.getElementById('inviteCodeHelpText');
+    const adminNotice = document.getElementById('adminNotice');
     const locationPermission = document.getElementById('locationPermission');
     const city = document.getElementById('city');
     const state = document.getElementById('state');
@@ -199,8 +193,7 @@ function toggleRoleFields() {
     if (patientSelected) {
         patientSection.style.display = 'block';
         clinicNotice.style.display = 'none';
-        inviteCodeField.style.display = 'none';
-        inviteCodeInput.required = false;
+        adminNotice.style.display = 'none';
         
         // Make fields required for patients
         locationPermission.required = true;
@@ -210,9 +203,7 @@ function toggleRoleFields() {
     } else if (clinicSelected) {
         patientSection.style.display = 'none';
         clinicNotice.style.display = 'block';
-        inviteCodeField.style.display = 'block';
-        inviteCodeInput.required = true;
-        inviteCodeHelpText.textContent = 'Contact medical facility administration for clinic access code (3499)';
+        adminNotice.style.display = 'none';
         
         // Remove requirements for clinic registration
         locationPermission.required = false;
@@ -222,9 +213,7 @@ function toggleRoleFields() {
     } else if (adminSelected) {
         patientSection.style.display = 'none';
         clinicNotice.style.display = 'none';
-        inviteCodeField.style.display = 'block';
-        inviteCodeInput.required = true;
-        inviteCodeHelpText.textContent = 'Contact system administrator for admin access code (7267)';
+        adminNotice.style.display = 'block';
         
         // Remove requirements for admin registration
         locationPermission.required = false;
@@ -234,8 +223,7 @@ function toggleRoleFields() {
     } else {
         patientSection.style.display = 'none';
         clinicNotice.style.display = 'none';
-        inviteCodeField.style.display = 'none';
-        inviteCodeInput.required = false;
+        adminNotice.style.display = 'none';
         
         // Reset requirements
         locationPermission.required = false;
@@ -351,17 +339,48 @@ document.getElementById('registrationForm').addEventListener('submit', function(
         }
     }
     
-    if (clinicSelected || adminSelected) {
-        const inviteCode = document.getElementById('invite_code').value;
-        if (!inviteCode) {
-            e.preventDefault();
-            if (window.showSierraWingsNotification) {
-                showSierraWingsNotification('Please enter the required invite code.', 'error');
-            }
-            return;
-        }
+    // Handle clinic and admin registration with invite code prompts
+    if (clinicSelected) {
+        e.preventDefault();
+        promptForInviteCode('clinic', 'Medical Facility Access Code', 
+            'Please enter the invite code provided by your medical facility administrator:');
+        return;
+    }
+    
+    if (adminSelected) {
+        e.preventDefault();
+        promptForInviteCode('admin', 'Administrator Access Code', 
+            'Please enter the admin invite code provided by the system administrator:');
+        return;
     }
 });
+
+// Prompt for invite code when clinic or admin tries to register
+function promptForInviteCode(role, title, message) {
+    const inviteCode = prompt(title + '\n\n' + message);
+    
+    if (inviteCode === null) {
+        // User cancelled
+        return;
+    }
+    
+    if (!inviteCode || inviteCode.trim() === '') {
+        if (window.showSierraWingsNotification) {
+            showSierraWingsNotification('Invite code is required for ' + role + ' registration.', 'error');
+        }
+        return;
+    }
+    
+    // Set the invite code and submit the form
+    document.getElementById('invite_code').value = inviteCode.trim();
+    
+    // Remove the event listener temporarily to avoid infinite loop
+    const form = document.getElementById('registrationForm');
+    form.removeEventListener('submit', arguments.callee);
+    
+    // Submit the form
+    form.submit();
+}
 
 // Initialize form
 document.addEventListener('DOMContentLoaded', function() {
