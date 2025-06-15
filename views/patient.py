@@ -40,21 +40,42 @@ def dashboard():
     # Get available clinics for delivery requests
     available_clinics = ClinicProfile.query.filter_by(is_verified=True, is_active=True).all()
     
+    # Separate clinics and hospitals based on clinic_name or specialties
+    clinics = []
+    hospitals = []
+    
+    for facility in available_clinics:
+        # Check if it's a hospital based on name or specialties
+        facility_name = facility.clinic_name.lower()
+        is_hospital = ('hospital' in facility_name or 
+                      'medical center' in facility_name or 
+                      'general hospital' in facility_name or
+                      'regional hospital' in facility_name)
+        
+        if is_hospital:
+            hospitals.append(facility)
+        else:
+            clinics.append(facility)
+    
     return render_template('patient.html', 
                          missions=missions,
                          total_missions=total_missions,
                          pending_missions=pending_missions,
                          in_flight_missions=in_flight_missions,
                          completed_missions=completed_missions,
-                         available_clinics=available_clinics)
+                         available_clinics=clinics,
+                         available_hospitals=hospitals)
 
 @bp.route('/request-delivery', methods=['POST'])
 @login_required
 @patient_required
 def request_delivery():
     try:
-        # Get form data
+        # Get form data - check both clinic_id and hospital_id
         clinic_id = request.form.get('clinic_id')
+        hospital_id = request.form.get('hospital_id')
+        facility_id = clinic_id or hospital_id
+        
         payload_type = request.form.get('payload_type')
         payload_weight = request.form.get('payload_weight')
         pickup_address = request.form.get('pickup_address')
@@ -63,14 +84,14 @@ def request_delivery():
         special_instructions = request.form.get('special_instructions', '')
         
         # Validation
-        if not all([clinic_id, payload_type, pickup_address, delivery_address]):
-            flash('Please fill in all required fields including clinic selection.', 'error')
+        if not all([facility_id, payload_type, pickup_address, delivery_address]):
+            flash('Please fill in all required fields including facility selection.', 'error')
             return redirect(url_for('patient.dashboard'))
         
-        # Verify clinic exists and is active
-        clinic = ClinicProfile.query.filter_by(id=clinic_id, is_verified=True, is_active=True).first()
-        if not clinic:
-            flash('Selected clinic is not available.', 'error')
+        # Verify facility exists and is active
+        facility = ClinicProfile.query.filter_by(id=facility_id, is_verified=True, is_active=True).first()
+        if not facility:
+            flash('Selected facility is not available.', 'error')
             return redirect(url_for('patient.dashboard'))
         
         # Convert weight to float if provided
@@ -83,22 +104,23 @@ def request_delivery():
             except ValueError:
                 payload_weight = None
         
-        # Create mission with clinic association
+        # Create mission with facility association
         mission = Mission()
         mission.user_id = current_user.id
         mission.payload_type = payload_type
         mission.payload_weight = payload_weight
-        mission.pickup_address = f"{clinic.clinic_name}, {pickup_address}"
+        mission.pickup_address = f"{facility.clinic_name}, {pickup_address}"
         mission.delivery_address = delivery_address
         mission.priority = priority
         mission.special_instructions = special_instructions
         mission.status = 'pending'
-        mission.notes = f"Clinic: {clinic.clinic_name} (ID: {clinic_id})"
+        facility_type = "Hospital" if hospital_id else "Clinic"
+        mission.notes = f"{facility_type}: {facility.clinic_name} (ID: {facility_id})"
         
         db.session.add(mission)
         db.session.commit()
         
-        flash(f'Delivery request submitted successfully to {clinic.clinic_name}!', 'success')
+        flash(f'Delivery request submitted successfully to {facility.clinic_name}!', 'success')
         return redirect(url_for('patient.dashboard'))
         
     except Exception as e:

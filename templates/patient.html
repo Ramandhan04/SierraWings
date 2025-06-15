@@ -228,6 +228,65 @@
             </div>
             <form method="POST" action="{{ url_for('patient.request_delivery') }}">
                 <div class="modal-body">
+                    <!-- Facility Selection Tabs -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-3">
+                            <i class="fas fa-hospital me-2"></i>Select Medical Facility
+                        </h6>
+                        <ul class="nav nav-tabs" id="facilityTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="clinics-tab" data-bs-toggle="tab" data-bs-target="#clinics-pane" type="button" role="tab">
+                                    <i class="fas fa-clinic-medical me-2"></i>Clinics
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="hospitals-tab" data-bs-toggle="tab" data-bs-target="#hospitals-pane" type="button" role="tab">
+                                    <i class="fas fa-hospital me-2"></i>Hospitals
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content border border-top-0 p-3" id="facilityTabContent">
+                            <!-- Clinics Tab -->
+                            <div class="tab-pane fade show active" id="clinics-pane" role="tabpanel">
+                                <div class="mb-3">
+                                    <label for="clinic_id" class="form-label">Select Clinic <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="clinic_id" name="clinic_id" required>
+                                        <option value="">Choose a clinic...</option>
+                                        {% for clinic in available_clinics %}
+                                        <option value="{{ clinic.id }}" data-facility-type="clinic">
+                                            {{ clinic.clinic_name }} - {{ clinic.city }}, {{ clinic.region }}
+                                            {% if clinic.specialties %}
+                                                ({{ clinic.specialties | safe }})
+                                            {% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">{{ available_clinics|length }} verified clinics available</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Hospitals Tab -->
+                            <div class="tab-pane fade" id="hospitals-pane" role="tabpanel">
+                                <div class="mb-3">
+                                    <label for="hospital_id" class="form-label">Select Hospital <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="hospital_id" name="hospital_id">
+                                        <option value="">Choose a hospital...</option>
+                                        {% for hospital in available_hospitals %}
+                                        <option value="{{ hospital.id }}" data-facility-type="hospital">
+                                            {{ hospital.clinic_name }} - {{ hospital.city }}, {{ hospital.region }}
+                                            {% if hospital.specialties %}
+                                                ({{ hospital.specialties | safe }})
+                                            {% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">{{ available_hospitals|length }} verified hospitals available</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -282,6 +341,40 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Tab switching functionality for facility selection
+document.addEventListener('DOMContentLoaded', function() {
+    const clinicsTab = document.getElementById('clinics-tab');
+    const hospitalsTab = document.getElementById('hospitals-tab');
+    const clinicSelect = document.getElementById('clinic_id');
+    const hospitalSelect = document.getElementById('hospital_id');
+    
+    // Handle clinic tab click
+    clinicsTab.addEventListener('click', function() {
+        if (hospitalSelect) {
+            hospitalSelect.removeAttribute('required');
+            hospitalSelect.value = '';
+        }
+        if (clinicSelect) {
+            clinicSelect.setAttribute('required', 'required');
+        }
+    });
+    
+    // Handle hospital tab click
+    hospitalsTab.addEventListener('click', function() {
+        if (clinicSelect) {
+            clinicSelect.removeAttribute('required');
+            clinicSelect.value = '';
+        }
+        if (hospitalSelect) {
+            hospitalSelect.setAttribute('required', 'required');
+        }
+    });
+});
         </div>
     </div>
 </div>
@@ -648,19 +741,18 @@ function updateTelemetry() {
     // Telemetry data retrieved from authentic drone sensors only
 }
 
-function viewMissionDetails(missionId) {
-    window.location.href = `/patient/mission/${missionId}/details`;
-}
-
 // Test function for emergency buttons
 function testEmergencyClick() {
     console.log('testEmergencyClick called directly');
-    alert('Emergency button test - this works!');
     
     if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
         console.log('User confirmed, calling showEmergencyModal');
         showEmergencyModal();
     }
+}
+
+function viewMissionDetails(missionId) {
+    window.location.href = `/patient/mission/${missionId}/details`;
 }
 
 // Initialize emergency buttons when page loads
