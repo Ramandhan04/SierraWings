@@ -22,7 +22,7 @@
                     <a href="{{ url_for('patient.find_clinics') }}" class="btn btn-outline-primary">
                         <i class="fas fa-hospital me-2"></i>Find Medical Facilities
                     </a>
-                    <button class="btn btn-danger emergency-panic-btn" id="emergencyBtn">
+                    <button class="btn btn-danger emergency-panic-btn" id="emergencyBtn" onclick="testEmergencyClick()">
                         <i class="fas fa-exclamation-triangle me-2"></i>EMERGENCY
                     </button>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#requestDeliveryModal">
@@ -58,7 +58,7 @@
                             </p>
                         </div>
                         <div class="col-md-4 text-end">
-                            <button class="btn btn-danger btn-lg emergency-card-btn" id="emergencyCardBtn">
+                            <button class="btn btn-danger btn-lg emergency-card-btn" id="emergencyCardBtn" onclick="testEmergencyClick()">
                                 <i class="fas fa-ambulance me-2"></i>REQUEST EMERGENCY DRONE
                             </button>
                             <div class="mt-2">
@@ -382,12 +382,16 @@ function showSierraWingsNotification(message, type = 'info', duration = 5000) {
 
 // Emergency functionality
 function showEmergencyModal() {
+    console.log('showEmergencyModal function called');
+    
     // Remove any existing emergency modal
     const existingModal = document.getElementById('emergencyModal');
     if (existingModal) {
+        console.log('Removing existing modal');
         existingModal.remove();
     }
     
+    console.log('Creating new emergency modal');
     // Create emergency modal HTML
     const modalHTML = `
         <div class="modal fade" id="emergencyModal" tabindex="-1" aria-hidden="true">
@@ -648,31 +652,73 @@ function viewMissionDetails(missionId) {
     window.location.href = `/patient/mission/${missionId}/details`;
 }
 
+// Test function for emergency buttons
+function testEmergencyClick() {
+    console.log('testEmergencyClick called directly');
+    alert('Emergency button test - this works!');
+    
+    if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
+        console.log('User confirmed, calling showEmergencyModal');
+        showEmergencyModal();
+    }
+}
+
 // Initialize emergency buttons when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing emergency buttons...');
+    
     const emergencyBtn = document.getElementById('emergencyBtn');
     const emergencyCardBtn = document.getElementById('emergencyCardBtn');
     
+    console.log('Emergency buttons found:', {
+        emergencyBtn: emergencyBtn !== null,
+        emergencyCardBtn: emergencyCardBtn !== null
+    });
+    
     function handleEmergencyClick(e) {
+        console.log('Emergency button clicked!');
         e.preventDefault();
+        e.stopPropagation();
+        
         if (confirm('This will trigger an EMERGENCY medical drone delivery request. Are you sure?')) {
+            console.log('User confirmed emergency request');
             showEmergencyModal();
+        } else {
+            console.log('User cancelled emergency request');
         }
     }
     
+    // Add event listeners with debugging
     if (emergencyBtn) {
         emergencyBtn.addEventListener('click', handleEmergencyClick);
-        console.log('Emergency header button initialized');
+        console.log('Emergency header button event listener added');
+        
+        // Test button click programmatically
+        emergencyBtn.onclick = function(e) {
+            console.log('Emergency header button onclick triggered');
+            handleEmergencyClick(e);
+        };
+    } else {
+        console.error('Emergency header button not found!');
     }
     
     if (emergencyCardBtn) {
         emergencyCardBtn.addEventListener('click', handleEmergencyClick);
-        console.log('Emergency card button initialized');
+        console.log('Emergency card button event listener added');
+        
+        // Test button click programmatically
+        emergencyCardBtn.onclick = function(e) {
+            console.log('Emergency card button onclick triggered');
+            handleEmergencyClick(e);
+        };
+    } else {
+        console.error('Emergency card button not found!');
     }
     
-    // Also handle any dynamically created emergency buttons
+    // Global click handler for debugging
     document.addEventListener('click', function(e) {
-        if (e.target && (e.target.id === 'emergencyBtn' || e.target.id === 'emergencyCardBtn' || e.target.classList.contains('emergency-card-btn'))) {
+        if (e.target.id === 'emergencyBtn' || e.target.id === 'emergencyCardBtn') {
+            console.log('Global click handler triggered for emergency button:', e.target.id);
             handleEmergencyClick(e);
         }
     });
