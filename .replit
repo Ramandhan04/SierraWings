@@ -12,7 +12,7 @@ run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
 runButton = "Project"
 
 [[workflows.workflow]]
-name = "Project"
+name = "Sierra-Wings"
 mode = "parallel"
 author = "agent"
 
